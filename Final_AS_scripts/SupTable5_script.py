@@ -264,64 +264,6 @@ if __name__ == "__main__":
         
         return output, UCSF_Transmitted_lof_path
 
-    # # Preprocess transmitted variants
-    # def Transmitted_preprocess(dirname, coding_flag = "damaging"):
-    #     '''
-    #     coding_flag: 1. "damaging"; 2. "strict"; 3. "loose"; 4. None.
-    #         1. "damaging": exclude LOF variants
-    #         2. "strict": exclude variants with ANY coding consequences
-    #         3. "loose": exclude variants with ONLY coding consequences
-    #         3. None: do not exclude any coding variants
-    #     '''
-    #     # load and process raw data
-    #     Inherited = []
-    #     for file in ["KOR-STAR.rare.inherited.tsv.gz", "SSC_WGS9209s.rare.inherited.tsv.gz", "SPARK_WGS_1.rare.inherited.tsv.gz", "SPARK_WGS_2.rare.inherited.tsv.gz", "SPARK_WGS_3.rare.inherited.tsv.gz"]:
-    #         Inherited.append(pd.read_csv(args.raw_file_path + file, sep = "\t", dtype = str))
-    #     Inherited = pd.concat(Inherited).rename(columns = {"sample_id": "SampleID"}).drop(columns = ["gnomad_AF"])
-    #     Inherited[["chr", "pos"]] = pd.DataFrame(Inherited["locus"].apply(lambda x: x.split(":")).tolist(), index = Inherited.index)
-    #     Inherited["#Uploaded_variation"] = Inherited.apply(lambda x: x["chr"][3:] + "_" + x["pos"] + "_" + x["ref"] + "/" + x["alt"], axis = 1)
-    #     Inherited["start"] = Inherited["pos"].apply(lambda x: int(x) - 1)
-    #     Inherited["end"] = Inherited.apply(lambda x: int(x["pos"]) + len(x["ref"]) - 1, axis = 1)
-    #     logging.warning("transmitted line original: " + str(Inherited[["#Uploaded_variation", "SampleID"]].drop_duplicates().shape[0]))
-
-    #     # load variant annotation
-    #     var_annot = pd.read_csv("/fs/cbsuhy01/storage/NetFlow_ASD/Week8_429/Variants/UCSF_parent_var_annotation.txt", sep = "\t", dtype = str)
-    #     Inherited = pd.merge(Inherited, var_annot, on = "#Uploaded_variation")
-    #     logging.warning("transmitted line after mapping: " + str(Inherited[["#Uploaded_variation", "SampleID"]].drop_duplicates().shape[0]))
-    #     # Inherited.to_csv(dirname + "/UCSF_transmitted_total_raw.")
-
-    #     # Exclude siblings with ASD risk
-    #     roles = pd.read_csv(args.roles_file, index_col = None)
-    #     Inherited = Exclude_Sib(Inherited, roles)
-
-    #     pheno = pd.read_csv(args.pheno_file, sep = "\t", dtype = str)
-    #     Inherited = pd.merge(Inherited, pheno, on = ["SampleID"], how = "left")
-    #     Inherited["Variant_Classification"] = Inherited["Consequence"].apply(all_function_py3.consequence2varclass_coding)
-
-    #     if coding_flag == "damaging":
-    #         Inherited_lof = Inherited[Inherited["Variant_Classification"].isin(lof)]
-    #         Inherited_lof.to_csv(dirname + "/UCSF_Transmitted_preprocessed_LOF.txt", sep = "\t", header = True, index = None)
-    #         lof_vep_input_path = dirname + "/UCSF_Transmitted_lof_vep_input.txt"
-    #         Inherited_lof.apply(lambda x: " ".join([x["chr"][3:], str(x["pos"]), str(int(x["pos"]) + len(x["ref"]) - 1), x["ref"] + "/" + x["alt"]]), axis = 1).drop_duplicates().to_csv(lof_vep_input_path, sep = "\t", header = None, index = None)
-    #         Inherited[Inherited["Variant_Classification"] == "Missense_Mutation"].to_csv(dirname + "/UCSF_Transmitted_preprocessed_missense.txt", sep = "\t", header = True, index = None)
-
-    #         # Inherited = Inherited[~Inherited["#Uploaded_variation"].isin(set(Inherited_lof["#Uploaded_variation"]))]
-    #         output = dirname + "/UCSF_Transmitted_preprocessed_missense_hg19.txt"
-    #         input = dirname + "/UCSF_Transmitted_preprocessed_missense.txt"
-    #         command = "python /fs/cbsuhy01/storage/resources/liftOver/coord_conversion_between_genome_assemblies.py -o " + output + " -f hg38 -t hg19 -e " + input + " -c chr -s start -E end"
-    #         os.system(command)
- 
-    #     lof_vep_output = dirname + "/UCSF_Transmitted_lof_vep_output.txt"
-    #     all_function_py3.parse_VEP_output("/fs/cbsuhy01/storage/NetFlow_ASD/Week8/New_Analysis/coding_analysis/UCSF_Transmitted_lof_vep_output.vcf", lof_vep_output, cols = ["Consequence", "SYMBOL", "Gene", "Feature_type", "Feature", "BIOTYPE", "EXON", "HGVSc", "HGVSp", "Protein_position", "Amino_acids", "Codons", "ENSP", "SIFT", "PolyPhen", "CADD_PHRED", "CADD_RAW",  "gnomADe_AF"])
-    #     UCSF_Transmitted_lof_preprocessed = pd.read_csv(dirname + "/UCSF_Transmitted_preprocessed_LOF.txt", sep = "\t")
-    #     df_lof_vep_output = pd.read_csv(lof_vep_output, sep = "\t")
-    #     Transmitted_merged_lof = pd.merge(UCSF_Transmitted_lof_preprocessed, df_lof_vep_output, on = ["#Uploaded_variation"], how = "left")
-    #     UCSF_Transmitted_lof_path = dirname + "/UCSF_Transmitted_lof_vep_merged.txt"
-    #     Transmitted_merged_lof.to_csv(UCSF_Transmitted_lof_path, sep = "\t", header = True, index = None)
-    
-    #     return output, UCSF_Transmitted_lof_path
-
-
     def get_untransmitted_var(row, df_parent, inherited_var, output):
         father_var = df_parent[df_parent["SampleID"] == row["Father"]]
         father_var["sex"] = "male"
@@ -399,7 +341,7 @@ if __name__ == "__main__":
 
     #Function to parse missense mutations
     #mutation_type could be Transmitted, Untransimitted, or DNV
-    def parseVEP_missense_output(UCSF_missense_hg19_path, mutation_type):
+    def parseVEP_missense_output(UCSF_missense_hg19_path, mutation_type, dirname):
         missense_hg19_raw = pd.read_csv(UCSF_missense_hg19_path, sep = "\t").sort_values(by = ["chr", "start_hg19"])
         missense_hg19 = missense_hg19_raw[missense_hg19_raw["start_hg19"]!= -1]
         missense_hg19["pos_hg19"] = missense_hg19.apply(lambda x: int(x["start_hg19"]) + 1, axis = 1)
@@ -436,7 +378,7 @@ if __name__ == "__main__":
     def getTotalTable(missense_hg19_path, UCSF_lof, mut2merge, gnomad_score, dirname, output_path, mutation):
         
         # missense_hg19_raw is UCSF variant file converted to hg19, with no further filtering/parsing
-        missense_hg19_output, missense_hg19_raw = parseVEP_missense_output(missense_hg19_path, mutation_type = mutation)
+        missense_hg19_output, missense_hg19_raw = parseVEP_missense_output(missense_hg19_path, mutation_type = mutation, dirname = dirname)
         missense_hg19_output = missense_hg19_output.rename(columns = {"#Uploaded_variation" :"#Uploaded_variation_hg19"})
 
         UCSF_Dmisb = missense_hg19_output[missense_hg19_output["MPC"] >= float(2)]
