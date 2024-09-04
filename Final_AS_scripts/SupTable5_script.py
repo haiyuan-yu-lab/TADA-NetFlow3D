@@ -12,6 +12,8 @@ import logging
 from multiprocessing import Pool
 import time
 from joblib import Parallel, delayed
+import gc
+
 
 
 directory = os.path.dirname(os.path.abspath(__file__))
@@ -252,7 +254,7 @@ if __name__ == "__main__":
             os.system(command)
 
         lof_vep_output = dirname + "/UCSF_Transmitted_lof_vep_output.txt"
-        all_function_py3.parse_VEP_output("/fs/cbsuhy01/storage/NetFlow_ASD/Week8/New_Analysis/coding_analysis/UCSF_Transmitted_lof_vep_output.vcf", lof_vep_output)
+        all_function_py3.parse_VEP_output("/fs/cbsuhy01/storage/NetFlow_ASD/Week8/New_Analysis/coding_analysis/UCSF_Transmitted_lof_vep_output.vcf", lof_vep_output, cols = ["Consequence", "SYMBOL", "Gene", "Feature_type", "Feature", "BIOTYPE", "EXON", "HGVSc", "HGVSp", "Protein_position", "Amino_acids", "Codons", "ENSP", "SIFT", "PolyPhen", "CADD_PHRED", "CADD_RAW",  "gnomADe_AF"])
         
         UCSF_Transmitted_lof_preprocessed = pd.read_csv(dirname + "/UCSF_Transmitted_preprocessed_LOF.txt", sep="\t")
         df_lof_vep_output = pd.read_csv(lof_vep_output, sep="\t")
@@ -373,9 +375,15 @@ if __name__ == "__main__":
         df = df[df["Father"] != "0"]
         function_input = []
         df["status"] = df.apply(get_function_input, axis = 1)
-        p = Pool(5)
-        results = p.map(get_untransmitted_var_multirun, function_input)
-        p.close()
+        # p = Pool(5)
+        # results = p.map(get_untransmitted_var_multirun, function_input)
+        # Parallel processing with controlled resource usage
+        with Pool(5) as p:
+            results = p.map(get_untransmitted_var_multirun, function_input)
+
+        # Clean up memory
+        del df_inherited_missense, df_inherited_lof, parent_lof, parent_missense, parent_total, df_parent, df_inherited
+        gc.collect()
         return 
 
     #Function to parse loss of function mutations
@@ -456,7 +464,7 @@ if __name__ == "__main__":
         lof_coding_annotated.to_csv(dirname + "/UCSF_" + mutation + "_gnomad_" + str(gnomad_score) + "_mutability_annotated_lof_table.txt", sep = "\t", header = True, index = None)
         
         df_total = pd.merge(dmis_table, lof_coding_annotated, on = ["gene", "gene_gencodeV33", "gene_id", "chromosome", "pLI", "LOEUF", "mut.ptv", "mut.misb", "mut.misa"])
-        new_order = ["gene", "gene_gencodeV33", "gene_id", "chromosome", "pLI", "LOEUF", "mut.ptv", "mut.misb", "mut.misa", lof_col + ".case", lof_col + ".control", misb_col + ".case",  misb_col + ".control", misa_col + ".case",  misa_col + ".control"]
+        new_order = ["gene", "gene_gencodeV33", "gene_id", "chromosome", "pLI", "LOEUF", "mut.ptv", "mut.misb", "mut.misa", lof_col, lof_col + ".sib", misb_col,  misb_col + ".sib", misa_col,  misa_col + ".sib"]
         df_total = df_total[new_order]
 
         df_total.to_csv(output_path + "UCSF_" + mutation + "_totalMutability_table.txt", sep = "\t", header = True, index = None)
@@ -493,7 +501,15 @@ if __name__ == "__main__":
 
     # Function to process untransmitted data by chromosome
     def process_chromosome(i, df_parent_chr, df_annot, dirname):
+        # Filter annotations for the specific chromosome
         chr_annot = df_annot[df_annot["#Uploaded_variation"].astype(str).str.startswith(str(i))]
+
+        # Ensure there are annotations to process
+        if chr_annot.empty:
+            logging.warning(f"No annotations found for chromosome {i}")
+            return
+
+        # Call the preprocessing function for untransmitted variants
         Untransmitted_preprocess("chr" + str(i), df_parent_chr, chr_annot, dirname, coding_flag="damaging")
 
     DNV_output = dirname + "/DNV"
@@ -518,11 +534,12 @@ if __name__ == "__main__":
     df_annot["Variant_Classification"] = df_annot["Consequence"].apply(all_function_py3.consequence2varclass_coding)
     df_annot = df_annot[(df_annot["Variant_Classification"].isin(lof)) | (df_annot["Variant_Classification"] == "Missense_Mutation")]
 
-    # Parallel processing with joblib
-    Parallel(n_jobs=22)(delayed(process_chromosome)(i, df_parent_by_chr[i], df_annot, dirname) for i in range(1, 23))
+    # # Parallel processing with joblib
+    # Parallel(n_jobs=2)(delayed(process_chromosome)(i, df_parent_by_chr[i], df_annot, dirname) for i in range(1, 23))
    
-    # UCSF_Transmitted_missense_hg19_path = str(dirname + "/UCSF_Transmitted_preprocessed_missense_hg19.txt")
-    # UCSF_Transmitted_lof_path = str(dirname + "/UCSF_Transmitted_preprocessed_LOF.txt")
+   # Testing without parallelization
+    for i in range(1, 23):
+        process_chromosome(i, df_parent_by_chr[i], df_annot, dirname)
 
     coding_mut = pd.read_excel(args.Mutability_file,
                           sheet_name="Supplementary Table 5", dtype=str)
@@ -537,10 +554,10 @@ if __name__ == "__main__":
         missense_hg19_path = locals()[f"UCSF_{mutation}_missense_hg19_path"]
         lof_path = locals()[f"UCSF_{mutation}_lof_path"]
         UCSF_lof = pd.read_csv(lof_path, sep="\t")
-
+        dir_path = f"{dirname}/{mutation}"
         for gnomad_score in [0]:
             # Call function to get the data table for this mutation and score
-            table = getTotalTable(missense_hg19_path, UCSF_lof, mut2merge, gnomad_score, dirname, output_path, mutation)
+            table = getTotalTable(missense_hg19_path, UCSF_lof, mut2merge, gnomad_score, dir_path, output_path, mutation)
 
             # Store the resulting table in the dictionary
             tables[mutation] = table
