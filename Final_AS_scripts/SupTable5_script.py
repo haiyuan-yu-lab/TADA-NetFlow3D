@@ -317,8 +317,7 @@ if __name__ == "__main__":
         df = df[df["Father"] != "0"]
         function_input = []
         df["status"] = df.apply(get_function_input, axis = 1)
-        # p = Pool(5)
-        # results = p.map(get_untransmitted_var_multirun, function_input)
+
         # Parallel processing with controlled resource usage
         with Pool(5) as p:
             results = p.map(get_untransmitted_var_multirun, function_input)
@@ -429,9 +428,6 @@ if __name__ == "__main__":
                                                 str(var_type) : [case], 
                                                 str(var_type) + '.sib': [control]}))
             
-            # logging.warning(df_analysis_list)
-            # except:
-            #     logging.info(gene)
             print("appending counts to list")
         # Concatenate all group DataFrames
         df_analysis = pd.concat(df_analysis_list)
@@ -479,7 +475,7 @@ if __name__ == "__main__":
     # # Parallel processing with joblib
     # Parallel(n_jobs=2)(delayed(process_chromosome)(i, df_parent_by_chr[i], df_annot, dirname) for i in range(1, 23))
    
-   # Testing without parallelization
+   # Process each chromosome without parallelization
     for i in range(1, 23):
         process_chromosome(i, df_parent_by_chr[i], df_annot, dirname)
 
