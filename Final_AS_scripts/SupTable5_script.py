@@ -37,7 +37,8 @@ if __name__ == "__main__":
 	# Check input files
 	# -----------------
     if os.path.isdir(args.output_path) == False:
-        sys.exit("No such directory: " + args.output_path)
+        # sys.exit("No such directory: " + args.output_path)
+        os.mkdir(args.output_path)
     if args.output_path[-1] == "/":
         dirname = args.output_path + args.job_name 
     else:
