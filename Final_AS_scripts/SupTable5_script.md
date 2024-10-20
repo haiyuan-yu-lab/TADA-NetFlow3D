@@ -66,11 +66,11 @@ This is a tab-separated file containing the count information for each coding va
 20. `Transmitted.misa`: Number of transmitted misAs to affected offspring
 21. `Transmitted.misa.sib`: Number of transmitted misAs to unaffected offspring
 
-#### `{job_name}/{DNV}/`
+#### `/{job_name}/{DNV}/`
 This folder contains all the intermediate files produced for De Novo variant analysis.
 
-#### `{job_name}/{Transmitted}/`
+#### `/{job_name}/{Transmitted}/`
 This folder contains all the intermediate files produced for Transmitted variant analysis.
 
-#### `{job_name}/{Untransmitted}/`
+#### `/{job_name}/{Untransmitted}/`
 This folder contains all the intermediate files produced for Untransmitted variant analysis.
