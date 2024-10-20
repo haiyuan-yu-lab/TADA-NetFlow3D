@@ -15,12 +15,17 @@ python SupTable5_script.py -I <JOB_NAME> [-s SIB_FILE] [-R RAW_FILE_PATH] [-r RO
 - `-I <job_name>`: Replace `<job_name>` with a name of your choice for the current job. The output files will be stored in a folder with this name.
 
 ### Optional Arguments
-- `-s SIB_FILE, --sib_file SIB_FILE`: Path to the sibling information file. Used to exclude siblings with ASD risk. Default path is: `"/fs/cbsuhy01/storage/NetFlow_ASD/Week8_429/individuals_registration.csv"`.
-- `-R RAW_FILE_PATH, --raw_file_path RAW_FILE_PATH`: Path to UCSF raw mutation files folder. Default path is: `"/fs/cbsuhy01/storage/NetFlow_ASD/Week8_429/UCSF_raw/"`.
-- `-r ROLES_FILE, --roles_file ROLES_FILE`: Path to roles file. Used to exclude multiplex families and siblings with ASD risk.
-- `-g SAMPLE_INFORMATION, --sample_information SAMPLE_INFORMATION`: Path to sample information file. Contains the information on sex and phenotype (whether case or sibling). The default path is `"/fs/cbsuhy01/storage/NetFlow_ASD/Week8/SSC+SPARK+KOR-STAR_parsed.txt"`.
-- `-m MUTABILITY_FILE, --Mutability_file MUTABILITY_FILE`: Path to the Mutability file.
-- `-o OUTPUT_PATH, --output_path OUTPUT_PATH`: [OPTIONAL] Path to the job folder. If not specified, the job folder will be stored in the default output folder.
+- `-s , --sib_file`: Path to the sibling information file. Used to exclude siblings with ASD risk. Default path is: `"/fs/cbsuhy01/storage/NetFlow_ASD/Week8_429/individuals_registration.csv"`.
+
+- `-R , --raw_file_path`: Path to UCSF raw mutation files folder. Default path is: `"/fs/cbsuhy01/storage/NetFlow_ASD/Week8_429/UCSF_raw/"`.
+
+- `-r , --roles_file`: Path to roles file. Used to exclude multiplex families and siblings with ASD risk.
+
+- `-g , --sample_information`: Path to sample information file. Contains the information on sex and phenotype (whether case or sibling). The default path is `"/fs/cbsuhy01/storage/NetFlow_ASD/Week8/SSC+SPARK+KOR-STAR_parsed.txt"`.
+
+- `-m , --Mutability_file`: Path to the Mutability file. The default path is `"/fs/cbsuhy01/storage/NetFlow_ASD/Week8/New_Analysis/coding_analysis/41588_2022_1104_MOESM3_ESM.xlsx"`.
+
+- `-o , --output_path`: Path to the job folder. If not specified, the job folder will be stored in the default output folder `./Test_Output/`.
 
 ### Example Command
 ```bash
