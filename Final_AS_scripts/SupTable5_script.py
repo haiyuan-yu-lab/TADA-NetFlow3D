@@ -1,7 +1,5 @@
 description = "Python Script to generate coding count analysis table"
 
-import pandas as pd
-import numpy as np
 import argparse
 import sys
 sys.path.append("/home/yz2296/bin")
@@ -13,30 +11,29 @@ from multiprocessing import Pool
 import time
 from joblib import Parallel, delayed
 import gc
-
-
-
+import pandas as pd
+import numpy as np
 directory = os.path.dirname(os.path.abspath(__file__))
 
 # Parallelize get_untransmitted_var
 def get_untransmitted_var_multirun(kwargs):
     return get_untransmitted_var(**kwargs)
 
+
 if __name__ == "__main__":
-	# user input
+    # user input
     parser = argparse.ArgumentParser(description = description)
-    parser.add_argument('-p','--pheno_file', type = str, default = "/fs/cbsuhy01/storage/NetFlow_ASD/Week8/SSC+SPARK+KOR-STAR_parsed.txt", help = 'Path to phenotype file.')
+    # parser.add_argument('-p','--pheno_file', type = str, default = "/fs/cbsuhy01/storage/NetFlow_ASD/Week8/SSC+SPARK+KOR-STAR_parsed.txt", help = 'Path to phenotype file.')
     parser.add_argument('-s','--sib_file', type = str, default = "/fs/cbsuhy01/storage/NetFlow_ASD/Week8_429/individuals_registration.csv", help = 'Path to sibling information file.')
     parser.add_argument('-R','--raw_file_path', type = str, default = "/fs/cbsuhy01/storage/NetFlow_ASD/Week8_429/UCSF_raw/", help = 'Path to raw mutation files folder.')
     parser.add_argument('-r','--roles_file', type = str, default = "/fs/cbsuhy01/storage/NetFlow_ASD/Week8/roles_index.csv", help = 'Path to roles file.')
     parser.add_argument('-g','--sample_information', type = str, default = "/fs/cbsuhy01/storage/NetFlow_ASD/Week8/SSC+SPARK+KOR-STAR_parsed.txt", help = 'Path to sex file.')
 
     parser.add_argument('-m','--Mutability_file', type = str, default = "/fs/cbsuhy01/storage/NetFlow_ASD/Week8/New_Analysis/coding_analysis/41588_2022_1104_MOESM3_ESM.xlsx", help = 'Path to Mutability file.')
-    parser.add_argument('-o','--output_path', type = str, default = "/fs/cbsuhy01/storage/NetFlow_ASD/Week8/New_Analysis/coding_analysis/", help = '[OPTIONAL] Path to the job folder. If not specified, the job folder will be stored in the default output folder')
+    parser.add_argument('-o','--output_path', type = str, default = "./Test_Output/", help = '[OPTIONAL] Path to the job folder. If not specified, the job folder will be stored in the default output folder')
 
     parser.add_argument('-I','--job_name', required = True, type = str, help = 'Please specify a name for your job. The output files will be stored with this name')
     args = parser.parse_args()
-
 ############################################################################################################################################
 	# Check input files
 	# -----------------
@@ -53,8 +50,8 @@ if __name__ == "__main__":
     if path.exists(output_path) == False:
         os.mkdir(output_path)
 
-    if path.exists(args.pheno_file) == False:
-        sys.exit("No such directory: " + args.pheno_file)
+    # if path.exists(args.pheno_file) == False:
+    #     sys.exit("No such directory: " + args.pheno_file)
     if path.exists(args.sib_file) == False:
         sys.exit("No such directory: " + args.sib_file)
     if path.exists(args.roles_file) == False:
@@ -92,7 +89,7 @@ if __name__ == "__main__":
     def Exclude_Sib(df, roles):
         # get siblings who are too young for a reliable ASD diagnosis
         unknown_fam = set(roles[roles["family_type"] == "Unknown"]["family_sf_id"].tolist()) - {"SF0153305"} # SF0153305 is a special case, see slides on Mar 7, 2022
-        pheno = pd.read_csv(args.pheno_file, sep = "\t", dtype = str)
+        pheno = pd.read_csv(args.sample_information, sep = "\t", dtype = str)
         young_sib = set(pheno[(pheno["Father"] != "0") & (pheno["Mother"] != "0") & (pheno["Pheno"] == "control") & pheno["Fam"].isin(unknown_fam)]["SampleID"])
 
         # get siblings with potential developmental concerns
@@ -230,7 +227,7 @@ if __name__ == "__main__":
         Inherited = Exclude_Sib(Inherited, roles)
 
         # Merge with phenotype data
-        pheno = pd.read_csv(args.pheno_file, sep="\t", dtype=str)
+        pheno = pd.read_csv(args.sample_information, sep="\t", dtype=str)
         Inherited = Inherited.merge(pheno, on=["SampleID"], how="left")
 
         Inherited["Variant_Classification"] = Inherited["Consequence"].apply(all_function_py3.consequence2varclass_coding)
