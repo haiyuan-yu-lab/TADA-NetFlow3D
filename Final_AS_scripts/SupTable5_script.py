@@ -23,7 +23,6 @@ def get_untransmitted_var_multirun(kwargs):
 if __name__ == "__main__":
     # user input
     parser = argparse.ArgumentParser(description = description)
-    # parser.add_argument('-p','--pheno_file', type = str, default = "/fs/cbsuhy01/storage/NetFlow_ASD/Week8/SSC+SPARK+KOR-STAR_parsed.txt", help = 'Path to phenotype file.')
     parser.add_argument('-s','--sib_file', type = str, default = "/fs/cbsuhy01/storage/NetFlow_ASD/Week8_429/individuals_registration.csv", help = 'Path to sibling information file.')
     parser.add_argument('-R','--raw_file_path', type = str, default = "/fs/cbsuhy01/storage/NetFlow_ASD/Week8_429/UCSF_raw/", help = 'Path to raw mutation files folder.')
     parser.add_argument('-r','--roles_file', type = str, default = "/fs/cbsuhy01/storage/NetFlow_ASD/Week8/roles_index.csv", help = 'Path to roles file.')
@@ -50,8 +49,6 @@ if __name__ == "__main__":
     if path.exists(output_path) == False:
         os.mkdir(output_path)
 
-    # if path.exists(args.pheno_file) == False:
-    #     sys.exit("No such directory: " + args.pheno_file)
     if path.exists(args.sib_file) == False:
         sys.exit("No such directory: " + args.sib_file)
     if path.exists(args.roles_file) == False:
@@ -63,9 +60,6 @@ if __name__ == "__main__":
     if path.exists(args.Mutability_file) == False:
         sys.exit("No such directory: " + args.Mutability_file)
     
-
-
-    # dirname = "/fs/cbsuhy01/storage/NetFlow_ASD/Week8/New_Analysis/coding_analysis"
 
     lof = {"Frame_Shift_Del","Frame_Shift_Ins","Nonsense_Mutation","Nonstop_Mutation","Translation_Start_Site","Splice_Site"}
 
