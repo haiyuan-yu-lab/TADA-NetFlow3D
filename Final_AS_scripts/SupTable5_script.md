@@ -19,7 +19,7 @@ python SupTable5_script.py -I <JOB_NAME> [-s SIB_FILE] [-R RAW_FILE_PATH] [-r RO
 
 - `-R , --raw_file_path`: Path to UCSF raw mutation files folder. Default path is: `"/fs/cbsuhy01/storage/NetFlow_ASD/Week8_429/UCSF_raw/"`.
 
-- `-r , --roles_file`: Path to roles file. Used to exclude multiplex families and siblings with ASD risk.
+- `-r , --roles_file`: Path to roles file. Used to exclude multiplex families and siblings with ASD risk. Default path is: `"/fs/cbsuhy01/storage/NetFlow_ASD/Week8/SSC+SPARK+KOR-STAR_parsed.txt"`. 
 
 - `-g , --sample_information`: Path to sample information file. Contains the information on sex and phenotype (whether case or sibling). The default path is `"/fs/cbsuhy01/storage/NetFlow_ASD/Week8/SSC+SPARK+KOR-STAR_parsed.txt"`.
 
@@ -38,7 +38,7 @@ To get an idea of what the output files should look like, please see the example
 
 ## Output Files
 
-### `{job_name}/{Summary}/`
+#### `{job_name}/{Summary}/`
 This folder contains the summary files. There are three files in this folder. Two of them are count tables for De Novo and Transmitted variants, respectively. The overall coding count table is:
 
 #### `Total_CodingAnalysis_Table.txt`
@@ -66,11 +66,11 @@ This is a tab-separated file containing the count information for each coding va
 20. `Transmitted.misa`: Number of transmitted misAs to affected offspring
 21. `Transmitted.misa.sib`: Number of transmitted misAs to unaffected offspring
 
-### `{job_name}/{DNV}/`
+#### `{job_name}/{DNV}/`
 This folder contains all the intermediate files produced for De Novo variant analysis.
 
-### `{job_name}/{Transmitted}/`
+#### `{job_name}/{Transmitted}/`
 This folder contains all the intermediate files produced for Transmitted variant analysis.
 
-### `{job_name}/{Untransmitted}/`
+#### `{job_name}/{Untransmitted}/`
 This folder contains all the intermediate files produced for Untransmitted variant analysis.
