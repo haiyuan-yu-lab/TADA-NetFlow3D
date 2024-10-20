@@ -32,7 +32,8 @@ python SupTable5_script.py -I <JOB_NAME> [-s SIB_FILE] [-R RAW_FILE_PATH] [-r RO
 python SupTable5_script.py -I test_script
 ```
 
-If you run the above command, the output should be found in your specified `output_path + /job_name/` or (`./Test_Output + /job_name/` by default). The output will include the following 4 folders: `/DNV/`, `/Transmitted/`, `/Untransmitted/`, `/Summary/`.
+If you run the above command, the output should be found in your specified `output_path + /job_name/` or (`./Test_Output + /job_name/` by default). The output will include the following 4 folders: `/DNV/`, `/Transmitted/`, `/Untransmitted/`, `/Summary/`. 
+Note: If using default output_path, the folder will be created in your current directory.
 
 To get an idea of what the output files should look like, please see the example output files in `/fs/cbsuhy01/storage/NetFlow_ASD/Week8/Final_ASD_github/test_902`. The main output file (coding count table) will be stored in the path `./Summary/Total_CodingAnalysis_Table.txt`.
 
