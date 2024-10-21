@@ -19,7 +19,7 @@ python SupTable5_script.py -I <JOB_NAME> [-s SIB_FILE] [-R RAW_FILE_PATH] [-r RO
 
 - `-R , --raw_file_path`: Path to UCSF raw mutation files folder. Default path is: `"/fs/cbsuhy01/storage/NetFlow_ASD/Week8_429/UCSF_raw/"`.
 
-- `-r , --roles_file`: Path to roles file. Used to exclude multiplex families and siblings with ASD risk. Default path is: `"/fs/cbsuhy01/storage/NetFlow_ASD/Week8/SSC+SPARK+KOR-STAR_parsed.txt"`. 
+- `-r , --roles_file`: Path to roles file. Used to exclude multiplex families and siblings with ASD risk. Default path is: `"/fs/cbsuhy01/storage/NetFlow_ASD/Week8/roles_index.csv"`. 
 
 - `-g , --sample_information`: Path to sample information file. Contains the information on sex and phenotype (whether case or sibling). The default path is `"/fs/cbsuhy01/storage/NetFlow_ASD/Week8/SSC+SPARK+KOR-STAR_parsed.txt"`.
 
