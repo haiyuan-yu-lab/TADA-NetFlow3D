@@ -5,7 +5,7 @@ DATA_DIR=/fs/cbsuhy02/storage/yz2676/ASD/enhancer
 mkdir -p ${DATA_DIR}
 
 cell_types=("SC3" "CHTN22" "HN21" "CHTN13" "SC2" "SC8" "Microglia"
-            "Neuron_4R" "LUHMES_Li" "ReNcellCX")
+            "Neuron_4R" "LUHMES_Li" "ReNcellCX" "HEK293" "K562")
 
 SC3_PL_PATH=/fs/cbsuhy01/storage/NetFlow_ASD/Week8_429/PROcap_hg38/SC3/alignmentmerge_SC3a_and_SC3b_pl.bw
 SC3_MN_PATH=/fs/cbsuhy01/storage/NetFlow_ASD/Week8_429/PROcap_hg38/SC3/alignmentmerge_SC3a_and_SC3b_mn.bw
@@ -37,8 +37,13 @@ Neuron_4R_MN_PATH=/fs/cbsuhy01/storage/NetFlow_ASD/PROcap/Xiuqi/batch_3/Neuron_4
 Microglia_PL_PATH=/fs/cbsuhy01/storage/NetFlow_ASD/PROcap/Xiuqi/batch_3/MG_WT.PROcap_5pl.bw
 Microglia_MN_PATH=/fs/cbsuhy01/storage/NetFlow_ASD/PROcap/Xiuqi/batch_3/MG_WT.PROcap_5mn.bw
 
-for cell_type in "${cell_types[@]}"
-do
+HEK293_PL_PATH=/fs/cbsuhy01/storage/NetFlow_ASD/Week8_429/PROcap_hg38/HEK293/alignmentmerge_C2a_and_C2b_pl.bw
+HEK293_MN_PATH=/fs/cbsuhy01/storage/NetFlow_ASD/Week8_429/PROcap_hg38/HEK293/alignmentmerge_C2a_and_C2b_mn.bw
+
+K562_PL_PATH=/fs/cbsuhy01/storage/NetFlow_ASD/Week8_429/PROcap_hg38/K562/alignmentmerge_C1a_and_C1b_pl.bw
+K562_MN_PATH=/fs/cbsuhy01/storage/NetFlow_ASD/Week8_429/PROcap_hg38/K562/alignmentmerge_C1a_and_C1b_mn.bw
+
+for cell_type in "${cell_types[@]}"; do
     OUTPATH=${DATA_DIR}/${cell_type}
     mkdir -p ${OUTPATH}
     PL_VAR="${cell_type}_PL_PATH"
@@ -48,5 +53,5 @@ do
         --bw_pl ${!PL_VAR} \
         --bw_mn ${!MN_VAR} \
         --alpha 0.3 \
-        --output_path ${OUTPATH}
+        --output_path "$OUTPATH"
 done
