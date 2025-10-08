@@ -1,5 +1,18 @@
 #!/usr/bin/env bash
 
+# Annotate inherited VCF files with VEP
+# to get the functional annotations:
+# Consequence, CADD, phyloP, phastCons, REVEL, gnomADg_AF, etc.
+
+# Note: first download VEP cache for human GRCh38: 
+# vep_install -a cf -s homo_sapiens -y GRCh38 -c data/vep_cache --CONVERT --NO_UPDATE --USE_HTTPS_PROTO
+
+# Plugins: 
+# Please refer to https://useast.ensembl.org/info/docs/tools/vep/script/vep_plugins.html
+# gnomAD v3.1 genome at /fs/cbsuhyfs1/storage/resources/gnomad/r3.1/hg38/genome
+# CADD v1.7 SNV+InDels at data/supplemental/cadd
+# REVEL v1.3 at data/supplemental/revel
+
 set -euo pipefail
 
 require_file() {
