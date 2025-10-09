@@ -34,7 +34,7 @@ make_unique_sites_vcf() {
   # Extract CHROM,POS,REF,ALT, deduplicate, rebuild minimal VCF header, bgzip + index
   bcftools view "${region_arg[@]}" "$in_vcf" \
   | bcftools query -f '%CHROM\t%POS\t%REF\t%ALT\n' \
-  | LC_ALL=C sort -u -k1,1 -k2,2n \
+  | LC_ALL=C sort -u -k1,1n -k2,2n -k3,3 -k4,4 \
   | awk 'BEGIN{OFS="\t"}{print $1,$2,".",$3,$4,".",".","."}' \
   | (echo '##fileformat=VCFv4.2'; echo -e '#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO'; cat) \
   | bgzip > "$out_sites"

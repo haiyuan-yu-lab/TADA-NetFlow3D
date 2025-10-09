@@ -19,6 +19,6 @@ out_vcf="$INH_OUT_DIR/All_inherited_WGS_hg38.${CHR}.vep.vcf.gz"
 make_unique_sites_vcf "$INH_VCF" "$sites_vcf" "$CHR_NC"
 
 # VEP (bigger file → keep higher fork/buffer)
-run_vep_sites "$sites_vcf" "$out_vcf" 16 80000
+run_vep_sites "$sites_vcf" "$out_vcf" 4 50000
 
 echo "Done: $out_vcf"
