@@ -12,6 +12,15 @@
 #    b) Damaging missense: - missense consequence with REVEL >= 0.5
 # 4) Annotate necessary metadata (sex, etc.)
 
+# Usage:
+# 1) For DNVs:
+# sbatch src/0_process_data/0.3_asdinfo_annotate.sh --type dnm 
+#    --exclude-multiplex yes --exclude-concerning yes --exclude-coding yes
+# 2) For inherited variants:
+# sbatch src/0_process_data/0.3_asdinfo_annotate.sh --type inh 
+# 3) DNV with coding variants kept:
+# sbatch src/0_process_data/0.3_asdinfo_annotate.sh --type dnm --exclude-coding no --out-prefix UCSF_20211001_dnms_WGS_hg38.codingkept
+
 set -euo pipefail
 # -----------------------------
 # Parameters
@@ -36,11 +45,6 @@ REVEL_THRESH="0.5"
 # Work/output dir
 ASD_DIR="/fs/cbsuhy01/storage/yz2676/projects/1-ASD/NetFlow_ASD/Yutong_scripts/data/asdinfo"
 
-# Exclusion lists
-FAM_LIST="$ASD_DIR/multiplex_families.txt"
-SAMP_LIST="$ASD_DIR/samples_exclude.txt"
-SEX_MAP="$ASD_DIR/sex.map"
-
 THREADS="${THREADS:-8}"
 
 # Toggles
@@ -55,6 +59,7 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --type)               TYPE="$2"; shift 2;;
     --asd-dir)            ASD_DIR="$2"; shift 2;;
+    --out-prefix)         USER_PREFIX="$2"; shift 2;;
     --vep-anno-dir)       VEP_ANNO_DIR="$2"; shift 2;;
     --dnv-vep)            DNV_VEP_REL="$2"; shift 2;;
     --inh-vep)            INH_VEP_REL="$2"; shift 2;;
@@ -63,9 +68,6 @@ while [[ $# -gt 0 ]]; do
     --concern-ind)        CONCERN_INDIV="$2"; shift 2;;
     --family-tag)         FAMILY_TAG="$2"; shift 2;;
     --sample-tag)         SAMPLE_TAG="$2"; shift 2;;
-    --fam-list)           FAM_LIST="$2"; shift 2;;
-    --samp-list)          SAMP_LIST="$2"; shift 2;;
-    --sex-map)            SEX_MAP="$2"; shift 2;;
     --threads)            THREADS="$2"; shift 2;;
     --exclude-multiplex)  EXCLUDE_MULTIPLEX="$2"; shift 2;;
     --exclude-concerning) EXCLUDE_CONCERNING="$2"; shift 2;;
@@ -78,6 +80,13 @@ while [[ $# -gt 0 ]]; do
 done
 
 mkdir -p "$ASD_DIR"
+
+# Exclusion lists
+FAM_LIST="$ASD_DIR/multiplex_families.txt"
+SAMP_LIST="$ASD_DIR/samples_exclude.txt"
+SEX_MAP="$ASD_DIR/sex.map"
+PHENO_MAP="$ASD_DIR/pheno.map"
+
 # -----------------------------
 # Helpers
 # -----------------------------
@@ -85,29 +94,39 @@ log(){ echo "[$(date '+%F %T')] $*" >&2; }
 require_file(){ [[ -s "$1" ]] || { log "ERROR: Missing or empty file: $1"; exit 1; }; }
 optional(){ [[ -s "$1" ]]; }
 
-add_or_keep_sex_header(){
+add_or_keep_sex_pheno_headers(){
   awk '
-    BEGIN { add=1 }
-    /^##INFO=/ && $0 ~ /ID=SEX,/ { add=0 }
+    BEGIN { add_sex=1; add_status=1 }
+    /^##INFO=/ && $0 ~ /ID=SEX,/   { add_sex=0 }
+    /^##INFO=/ && $0 ~ /ID=STATUS,/ { add_status=0 }
     /^#CHROM/ {
-      if (add) print "##INFO=<ID=SEX,Number=1,Type=String,Description=\"Sample sex from mapping\">"
+      if (add_sex)
+        print "##INFO=<ID=SEX,Number=1,Type=String,Description=\"Sample sex from mapping\">"
+      if (add_status)
+        print "##INFO=<ID=STATUS,Number=1,Type=String,Description=\"Phenotype from metadata\">"
       print; next
     }
     { print }'
 }
 
-annotate_sex_stream(){
-  local key="$1" mapfile="$2"
-  awk -v FS="\t" -v OFS="\t" -v MAP="$mapfile" -v KEY="$key" '
+annotate_sex_pheno_stream(){
+  local key="$1" sexmap="$2" phenomap="$3"
+  awk -v FS="\t" -v OFS="\t" \
+      -v KEY="$key" -v S="$sexmap" -v P="$phenomap" '
     BEGIN{
-      if (MAP=="") { print "ERROR: MAP is empty" > "/dev/stderr"; exit 1 }
-      while((getline < MAP) >= 0){
+      if (S=="") { print "ERROR: SEX MAP is empty" > "/dev/stderr"; exit 1 }
+      while((getline < S) > 0){
         sub(/\r$/,"");
-        split($0,f,"\t"); if(f[1] && f[2]) { sex[f[1]]=f[2]; nmap++ }
+        split($0,f,"\t"); if(f[1] && f[2]) { sex[f[1]]=f[2]; nsex++ }
       }
-      close(MAP)
-      print "INFO: loaded", nmap, "sample->sex pairs" > "/dev/stderr"
-      changed=0; missing=0; noKey=0
+      close(S)
+      if (P!=""){
+        while((getline < P) > 0){ sub(/\r$/,""); split($0,f,"\t"); if(f[1] && f[2]) { pheno[f[1]]=f[2]; nph++ } }
+        close(P)
+      }
+      print "INFO: loaded", nsex, "sample->sex pairs" > "/dev/stderr"
+      print "INFO: loaded", nph+0, "sample->pheno pairs" > "/dev/stderr"
+      sex_added=0; pheno_added=0; sex_missing=0; pheno_missing=0; noKey=0
     }
     function get(info,key, a){
       if (match(info, "(^|;)" key "=([^;]*)", a)) return a[2]
@@ -117,13 +136,15 @@ annotate_sex_stream(){
       info=$8
       sid=get(info, KEY)
       if (sid==""){ noKey++; print; next }
-      if (sid in sex){ $8=info";SEX="sex[sid]; changed++ } else { missing++ }
+      if (sid in sex){ info=info";SEX="sex[sid]; sex_added++ } else { sex_missing++ }
+      if (P!="" && (sid in pheno)){ info=info";STATUS="pheno[sid]; pheno_added++ } else { pheno_missing++ }
+      $8=info
       print
     }
     END{
-      print "INFO: rows edited:", changed,
-            " | rows with " KEY " not in map:", missing,
-            " | rows missing " KEY ":", noKey > "/dev/stderr"
+      print "INFO: rows missing " KEY ":", noKey+0 \
+          , " | SEX added:", sex_added+0, "missing:", sex_missing+0 \
+          , " | PHENO added:", pheno_added+0, "missing:", pheno_missing+0 > "/dev/stderr"
     }'
 }
 
@@ -188,21 +209,63 @@ build_concerning_list(){
   log "Concerning samples -> $SAMP_LIST ($(wc -l < "$SAMP_LIST" 2>/dev/null || echo 0))"
 }
 
+build_sex_map(){
+  log "Building SEX map -> $SEX_MAP"
+  if [[ -s "$PHENO" ]]; then
+    awk -F'\t' 'NR==1{
+    for(i=1;i<=NF;i++){
+        gsub(/\r$/,"",$i)
+        if($i=="SampleID") sid=i
+        if($i=="sex") sx=i
+    }
+    next
+    }
+    {print $sid "\t" $sx}' "$PHENO" > "$SEX_MAP"
+  else
+    : > "$SEX_MAP"
+  fi
+}
+
+build_pheno_map(){
+  log "Building PHENO map -> $PHENO_MAP"
+  if [[ -s "$PHENO" ]]; then
+    awk -F'\t' 'NR==1{
+    for(i=1;i<=NF;i++){
+        gsub(/\r$/,"",$i)
+        if($i=="SampleID") sid=i
+        if($i=="Pheno") ph=i
+    }
+    next
+    }
+    {print $sid "\t" $ph}' "$PHENO" > "$PHENO_MAP"
+  else
+    : > "$PHENO_MAP"
+  fi
+}
+
 # -----------------------------
 # Inputs per TYPE
 # -----------------------------
 case "$TYPE" in
-  dnm) IN_VCF="$VEP_ANNO_DIR/$DNV_VEP_REL"; OUT_PREFIX="$ASD_DIR/UCSF_20211001_dnms_WGS_hg38";;
-  inh) IN_VCF="$VEP_ANNO_DIR/$INH_VEP_REL"; OUT_PREFIX="$ASD_DIR/All_inherited_WGS_hg38";;
+  dnm) IN_VCF="$VEP_ANNO_DIR/$DNV_VEP_REL";;
+  inh) IN_VCF="$VEP_ANNO_DIR/$INH_VEP_REL";;
   *)   echo "ERROR: --type must be dnm or inh" >&2; exit 1;;
 esac
-
-log "TYPE=$TYPE | IN_VCF=$IN_VCF | OUT_PREFIX=$OUT_PREFIX"
-log "TOGGLES: exclude_multiplex=$EXCLUDE_MULTIPLEX, exclude_concerning=$EXCLUDE_CONCERNING, exclude_coding=$EXCLUDE_CODING"
-log "THREADS=$THREADS"
-log "OUTPUT dir: $ASD_DIR"
-
 require_file "$IN_VCF"
+
+if [[ -n "$USER_PREFIX" ]]; then
+    OUT_PREFIX="$ASD_DIR/$(basename "$USER_PREFIX")"
+else
+    case "$TYPE" in
+    dnm) OUT_PREFIX="$ASD_DIR/UCSF_20211001_dnms_WGS_hg38";;
+    inh) OUT_PREFIX="$ASD_DIR/All_inherited_WGS_hg38";;
+    esac
+fi
+
+log "[INFO] TYPE=$TYPE | IN_VCF=$IN_VCF"
+log "[INFO] OUT_PREFIX=$OUT_PREFIX"
+log "[INFO] TOGGLES: exclude_multiplex=$EXCLUDE_MULTIPLEX, exclude_concerning=$EXCLUDE_CONCERNING, exclude_coding=$EXCLUDE_CODING"
+log "[INFO] THREADS=$THREADS"
 
 # Build lists only if that exclusion is ON and no custom list provided (or default path used)
 if [[ "$EXCLUDE_MULTIPLEX" == "yes" ]]; then
@@ -261,7 +324,7 @@ bcftools index -f "$FILTERED_BCF"
 # =============================
 # Step 3: Optional coding exclusion (LOF + high-REVEL missense)
 # =============================
-NONCODING_BCF="$OUT_PREFIX.filtered.noncoding.bcf"
+NONCODING_BCF="$OUT_PREFIX.filtered.vep.bcf"
 if [[ "$EXCLUDE_CODING" == "yes" ]]; then
   log "Excluding LOF & missense(REVEL>$REVEL_THRESH) -> $NONCODING_BCF"
   bcftools +split-vep \
@@ -282,19 +345,32 @@ bcftools index -f "$NONCODING_BCF"
 N_IN=$(bcftools view -H "$TMP_BCF" | wc -l || echo 0)
 N_AFTER_FS=$(bcftools view -H "$FILTERED_BCF" | wc -l || echo 0)
 N_AFTER_CODE=$(bcftools view -H "$NONCODING_BCF" | wc -l || echo 0)
-log "Counts | Input=$N_IN | After FAM/SAMPLE=$N_AFTER_FS | After coding exclusion=$N_AFTER_CODE"
+log "[INFO] Counts | Input=$N_IN | After FAM/SAMPLE=$N_AFTER_FS | After coding exclusion=$N_AFTER_CODE"
 
 # =============================
 # Step 5: SEX annotation
 # =============================
-FINAL_BCF="$OUT_PREFIX.filtered.noncoding.with_asdinfo.bcf"
-log "Annotating SEX using $SEX_MAP -> $FINAL_BCF"
-require_file "$SEX_MAP"
+FINAL_BCF="$OUT_PREFIX.filtered.vep.with_asdinfo.bcf"
+if [[ "$TYPE" == "inh" ]]; then
+  log "Annotating SEX + PHENO -> $FINAL_BCF"
+  if [[ ! -s "$SEX_MAP" ]]; then build_sex_map; fi
+  if [[ ! -s "$PHENO_MAP" ]]; then build_pheno_map; fi
+  require_file "$SEX_MAP"
+  require_file "$PHENO_MAP"
+  {
+    bcftools view -h "$NONCODING_BCF" | add_or_keep_sex_pheno_headers
+    bcftools view -H "$NONCODING_BCF" | annotate_sex_pheno_stream "$SAMPLE_TAG" "$SEX_MAP" "$PHENO_MAP"
+  } | bcftools view --threads "$THREADS" -Ob -o "$FINAL_BCF" -
+else
+  log "Annotating SEX only -> $FINAL_BCF"
+  if [[ ! -s "$SEX_MAP" ]]; then build_sex_map; fi
+  require_file "$SEX_MAP"
+  {
+    bcftools view -h "$NONCODING_BCF" | add_or_keep_sex_pheno_headers
+    bcftools view -H "$NONCODING_BCF" | annotate_sex_pheno_stream "$SAMPLE_TAG" "$SEX_MAP" ""   # empty PHENO map
+  } | bcftools view --threads "$THREADS" -Ob -o "$FINAL_BCF" -
 
-{
-  bcftools view -h "$NONCODING_BCF" | add_or_keep_sex_header
-  bcftools view -H "$NONCODING_BCF" | annotate_sex_stream "$SAMPLE_TAG" "$SEX_MAP"
-} | bcftools view --threads "$THREADS" -Ob -o "$FINAL_BCF" -
+fi
 bcftools index -f "$FINAL_BCF"
 
 log "DONE. Final: $FINAL_BCF"
