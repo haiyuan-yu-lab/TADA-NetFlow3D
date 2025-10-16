@@ -21,7 +21,7 @@
 # 3) DNV with coding variants kept:
 # sbatch src/0_process_data/0.3_asdinfo_annotate.sh --type dnm --exclude-coding no --out-prefix UCSF_20211001_dnms_WGS_hg38.codingkept
 
-set -euo pipefail
+set -eo pipefail
 # -----------------------------
 # Parameters
 # -----------------------------
