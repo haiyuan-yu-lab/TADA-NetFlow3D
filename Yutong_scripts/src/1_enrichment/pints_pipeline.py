@@ -220,7 +220,8 @@ class PintsPipeline:
             out_prom = f"{element_dir}/{merged_prefix}_{div_ext_left}bp_p.bed"
             self._write_bed(prom_df, out_prom)
     
-    def clear_intermediate_files(self, element_dir: Optional[str] = None):
+    def clear_intermediate_files(self, element_dir: Optional[str] = None,
+                                 peaks: bool = True, elements: bool = True):
         """
         Remove intermediate files generated during peak calling and boundary extension.
 
@@ -229,13 +230,20 @@ class PintsPipeline:
         element_dir : Optional[str], optional
             Directory where the extended peak files (elements) are located. 
             If None, use the peak_dir by default None.
+        peaks : bool, optional
+            If True, remove peak calling intermediate files (default: True).
+        elements : bool, optional
+            If True, remove boundary extension intermediate files (default: True).
         """
         if element_dir is None:
             element_dir = self.peak_dir
 
-        patterns = [
-            f"{element_dir}/{self.file_prefix}_1_*_peaks.bed",
-            f"{element_dir}/{self.file_prefix}_1_*_peaks_element_*bp.bed"
-        ]
+        patterns = []
+        if peaks:
+            patterns.append(f"{element_dir}/{self.file_prefix}_1_*_peaks.bed")
+
+        if elements:
+            patterns.append(f"{element_dir}/{self.file_prefix}_1_*_peaks_element_*bp*.bed")
+
         for pattern in patterns:
-            subprocess.run(["rm", "-f", pattern])
+            subprocess.run(f"rm -f {pattern}", shell=True)
