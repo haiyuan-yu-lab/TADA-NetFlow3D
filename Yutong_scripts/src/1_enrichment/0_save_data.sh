@@ -2,8 +2,8 @@
 out=manifests/procap_data.tsv
 mkdir -p "$(dirname "$out")"
 
-cell_types=("SC3" "CHTN22" "HN21" "CHTN13" "SC2" "SC8" "Microglia"
-            "Neuron_4R" "LUHMES_Li" "ReNcellCX" "HEK293" "K562" "SC1")
+cell_types=("SC3" "CHTN22" "HN21" "CHTN13" "SC2" "SC8" "MG_WT"
+            "Neuron_4R" "LUHMES_Li" "ReNcellCX" "C2" "C1" "SC1")
 
 SC3_PL_PATH=/fs/cbsuhy01/storage/NetFlow_ASD/Week8_429/PROcap_hg38/SC3/alignmentmerge_SC3a_and_SC3b_pl.bw
 SC3_MN_PATH=/fs/cbsuhy01/storage/NetFlow_ASD/Week8_429/PROcap_hg38/SC3/alignmentmerge_SC3a_and_SC3b_mn.bw
@@ -32,14 +32,14 @@ ReNcellCX_MN_PATH=/fs/cbsuhy01/storage/NetFlow_ASD/Week8_429/PROcap_hg38/ReNcell
 Neuron_4R_PL_PATH=/fs/cbsuhy01/storage/NetFlow_ASD/PROcap/Xiuqi/batch_3/Neuron_4R.yingying.all.PROcap_5pl.bw
 Neuron_4R_MN_PATH=/fs/cbsuhy01/storage/NetFlow_ASD/PROcap/Xiuqi/batch_3/Neuron_4R.yingying.all.PROcap_5mn.bw
 
-Microglia_PL_PATH=/fs/cbsuhy01/storage/NetFlow_ASD/PROcap/Xiuqi/batch_3/MG_WT.PROcap_5pl.bw
-Microglia_MN_PATH=/fs/cbsuhy01/storage/NetFlow_ASD/PROcap/Xiuqi/batch_3/MG_WT.PROcap_5mn.bw
+MG_WT_PL_PATH=/fs/cbsuhy01/storage/NetFlow_ASD/PROcap/Xiuqi/batch_3/MG_WT.PROcap_5pl.bw
+MG_WT_MN_PATH=/fs/cbsuhy01/storage/NetFlow_ASD/PROcap/Xiuqi/batch_3/MG_WT.PROcap_5mn.bw
 
-HEK293_PL_PATH=/fs/cbsuhy01/storage/NetFlow_ASD/Week8_429/PROcap_hg38/HEK293/alignmentmerge_C2a_and_C2b_pl.bw
-HEK293_MN_PATH=/fs/cbsuhy01/storage/NetFlow_ASD/Week8_429/PROcap_hg38/HEK293/alignmentmerge_C2a_and_C2b_mn.bw
+C2_PL_PATH=/fs/cbsuhy01/storage/NetFlow_ASD/Week8_429/PROcap_hg38/HEK293/alignmentmerge_C2a_and_C2b_pl.bw
+C2_MN_PATH=/fs/cbsuhy01/storage/NetFlow_ASD/Week8_429/PROcap_hg38/HEK293/alignmentmerge_C2a_and_C2b_mn.bw
 
-K562_PL_PATH=/fs/cbsuhy01/storage/NetFlow_ASD/Week8_429/PROcap_hg38/K562/alignmentmerge_C1a_and_C1b_pl.bw
-K562_MN_PATH=/fs/cbsuhy01/storage/NetFlow_ASD/Week8_429/PROcap_hg38/K562/alignmentmerge_C1a_and_C1b_mn.bw
+C1_PL_PATH=/fs/cbsuhy01/storage/NetFlow_ASD/Week8_429/PROcap_hg38/K562/alignmentmerge_C1a_and_C1b_pl.bw
+C1_MN_PATH=/fs/cbsuhy01/storage/NetFlow_ASD/Week8_429/PROcap_hg38/K562/alignmentmerge_C1a_and_C1b_mn.bw
 
 SC1_PL_PATH=/fs/cbsuhy02/storage/yz2676/data/PROcap/SC1/SC1_PROcap.merged.5pl.bw
 SC1_MN_PATH=/fs/cbsuhy02/storage/yz2676/data/PROcap/SC1/SC1_PROcap.merged.5mn.bw

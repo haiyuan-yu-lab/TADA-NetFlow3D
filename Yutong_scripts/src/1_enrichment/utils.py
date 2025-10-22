@@ -1,5 +1,6 @@
 import os
 import sys
+import json
 import logging
 import subprocess
 import pybedtools
@@ -37,3 +38,10 @@ def run_command(command: CMD, capture: bool = False) -> str:
     else:
         subprocess.run(argv, check=True, text=True)
         return ""
+
+def load_enhancer_dict(config_path: str) -> dict:
+    """
+    Load enhancer configuration from a JSON file.
+    """
+    with open(config_path, "r") as f:
+        return json.load(f)

@@ -159,7 +159,7 @@ class PintsPipeline:
                              enhancer: bool = False, promoter: bool = False,
                              merged_prefix: str = "all_peaks_element"):
         """
-        Merge peaks and save as a final output.
+        Concatenate peaks and save as a final output.
 
         Parameters
         ----------

@@ -1,9 +1,11 @@
 import os
 import pysam
 import tempfile
+import pybedtools
+import pandas as pd
 
 from utils import ensure_parent_dir, run_command
-from typing import Iterable, Tuple, Union, Set, List, Optional
+from typing import Dict, Iterable, Tuple, Union, Set, List, Optional
 
 
 class VCFHandler:
@@ -245,8 +247,125 @@ class VCFHandler:
         run_command(["tabix", "-f", "-p", "vcf", output_path]) 
 
 
-# def count_in_bed():
-#     pass
+class VCFBEDOverlapper:
+    """
+    A class to handle overlap between VCF and BED files.
+    """
+    def __init__(self, config: Dict[str, List[str]],
+                 output_dir: str = ".", 
+                 enhancer_dir: str = "data/enhancer/",
+                 enhancer_prefix: str = "all_peaks_element_200bp_e",
+                 ref: str = "/fs/cbsuhy01/storage/yz2676/data/DetailedProCapNet/wdir/reference/hg38.22XY.fasta"):
+        """
+        Args
+        ----
+        config : Dict[str, List[str]]
+            A dictionary mapping labels to lists of BED directory names.
+        output_dir : str
+            Directory to save output files.
+        enhancer_dir : str
+            Directory containing enhancer BED files.
+        enhancer_prefix : str
+            Saved BED file name.
+        ref : str
+            Path to the reference genome file, keeps only the major contigs (22+XY)
+        """
+        self.config = config
+        self.output_dir = output_dir
+        self.enhancer_dir = enhancer_dir
+        self.enhancer_prefix = enhancer_prefix
+        self.ref = ref
+
+    def _write_nonoverlap(self, bed: pd.DataFrame, label: str) -> str:
+        """
+        Merge the BED file to ensure non-overlapping regions.
+
+        Args
+        ----
+        bed : pd.DataFrame
+            Concatenated BED regions as a DataFrame.
+        label : str
+            Label for the BED file.
+        """
+        merged_bed = os.path.join(self.output_dir, label, f"{self.enhancer_prefix}.merged.bed")
+        ensure_parent_dir(merged_bed)
+        faidx_path = f"{self.ref}.fai"
+        if not os.path.exists(faidx_path):
+            run_command(["samtools", "faidx", self.ref])
+        
+        pybedtools.BedTool.from_dataframe(bed
+                ).filter(
+                    lambda x: x.chrom in {f"chr{str(i)}" for i in range(1, 23)}.union({"chrX", "chrY"})
+                ).sort(faidx=faidx_path).merge().saveas(merged_bed)
+        return merged_bed
+
+    def _harmonize_chrom_names(self, vcf_path: str, bed_path: str) -> pd.DataFrame:
+        """
+        Harmonize chromosome names in the BED file to match those in the VCF.
+        E.g., add 'chr' prefix if needed.
+        """
+        vcf_chroms = set()
+        with pysam.VariantFile(vcf_path) as vcf:
+            for rec in vcf.header.contigs.values():
+                vcf_chroms.add(rec.name)
+
+        def harmonize(chrom: str) -> str:
+            if chrom in vcf_chroms:
+                return chrom
+            elif f"chr{chrom}" in vcf_chroms:
+                return f"chr{chrom}"
+            elif chrom.startswith("chr") and chrom[3:] in vcf_chroms:
+                return chrom[3:]
+            else:
+                return chrom  # leave unchanged if no match found
+        bed = pd.read_csv(bed_path, sep="\t", header=None)
+        bed[0] = bed[0].apply(harmonize)
+        return bed
+
+    def map_variants_to_bed(self, vcf_path: str, names: List[str],
+                            file: str, write_overlap_vcf: bool = False) -> None:
+        """
+        For each enhancer label,
+            - Concatenate corresponding BED files.
+            - Merge to ensure non-overlapping regions.
+            - Find overlaps between VCF variants and BED regions.
+            (pybedtools handled 1-based vs 0-based coordinates)
+            - Save the overlapping BED regions to output files.
+        
+        Args
+        ----
+        vcf_path : str
+            Path to the VCF file.
+        names : List[str]
+            List of enhancer names to analyze.
+        file : str
+            Output file name for saving overlapping bed regions.
+        write_overlap_vcf : bool
+            Whether to write the full overlapping VCF records (default is False).
+        """
+        for name in names:
+            bed_names = self.config.get(name, [])
+            if not bed_names:
+                raise ValueError(f"Enhancer name '{name}' not found in config.")
+            bed_region = pd.concat([pd.read_csv(
+                os.path.join(self.enhancer_dir, bed_name, 
+                             f"{self.enhancer_prefix}.bed"), sep="\t", header=None
+            ) for bed_name in bed_names], ignore_index=True)
+            sorted_bed_path = self._write_nonoverlap(bed_region, name)
+
+            if write_overlap_vcf:
+                overlap_bed = pybedtools.BedTool.from_dataframe(
+                    self._harmonize_chrom_names(vcf_path, sorted_bed_path)).intersect(
+                    pybedtools.BedTool(vcf_path), wa=True, wb=True
+                    )
+            else:
+                overlap_bed = pybedtools.BedTool.from_dataframe(
+                    self._harmonize_chrom_names(vcf_path, sorted_bed_path)).intersect(
+                    pybedtools.BedTool(vcf_path), wa=True
+                    )
+            overlap_bed.saveas(os.path.join(
+                self.output_dir, name, file
+            ))
 
 # def fisher_exact_onesided():
 #     pass
