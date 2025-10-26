@@ -38,9 +38,9 @@ FAMILY_TAG="FAM"
 SAMPLE_TAG="SAMPLE"
 
 # LOF & missense thresholds
-LOF_REGEX="(frameshift_variant|splice_acceptor_variant|splice_donor_variant|stop_gained|stop_lost|start_lost)"
+LOF_REGEX="frameshift_variant\|splice_acceptor_variant\|splice_donor_variant\|splice_donor_5th_base_variant\|stop_gained\|stop_lost\|start_lost"
 MISSENSE_TERM="missense_variant"
-REVEL_THRESH="0.5"
+REVEL_THRESH=0.5
 
 # Work/output dir
 ASD_DIR="/fs/cbsuhy01/storage/yz2676/projects/1-ASD/NetFlow_ASD/Yutong_scripts/data/asdinfo"
@@ -284,55 +284,56 @@ if [[ "$EXCLUDE_CONCERNING" == "yes" ]]; then
 fi
 
 # -----------------------------
-# Step 0: Convert to BCF + index
-# -----------------------------
-TMP_BCF="$OUT_PREFIX.tmp.bcf"
-log "Converting to BCF: $TMP_BCF"
-bcftools view --threads "$THREADS" -Ob -o "$TMP_BCF" "$IN_VCF"
-bcftools index -f "$TMP_BCF"
-
-# -----------------------------
-# Step 1: Build position cache (CHROM,POS,POS,FAM,SAMPLE)
-# -----------------------------
-CACHE="$OUT_PREFIX.fam_sample.cache.bed.gz"
-log "Building fam/sample cache: $CACHE"
-bcftools query -f "%CHROM\t%POS\t%POS\t%INFO/${FAMILY_TAG}\t%INFO/${SAMPLE_TAG}\n" "$TMP_BCF" | bgzip > "$CACHE"
-tabix -s1 -b2 -e3 "$CACHE"
-
-# -----------------------------
-# Step 2: Exclude multiplex families and concerning siblings
+# Step 1: Exclude multiplex families and concerning siblings
 # -----------------------------
 FILTERED_BCF="$OUT_PREFIX.filtered.bcf"
-if [[ "$EXCLUDE_MULTIPLEX" == "yes" || "$EXCLUDE_CONCERNING" == "yes" ]]; then
-  log "Applying selected exclusions -> $FILTERED_BCF"
-  bcftools view -T ^<(
-    {
-      if [[ "$EXCLUDE_MULTIPLEX" == "yes" && -s "$FAM_LIST" ]]; then
-        zcat "$CACHE" | awk -F'\t' 'NR==FNR{fam[$1]=1; next} { if($4 in fam) print $1"\t"$2"\t"$3 }' "$FAM_LIST" -
-      fi
-      if [[ "$EXCLUDE_CONCERNING" == "yes" && -s "$SAMP_LIST" ]]; then
-        zcat "$CACHE" | awk -F'\t' 'NR==FNR{ok[$1]=1; next} { if($5 in ok) print $1"\t"$2"\t"$3 }' "$SAMP_LIST" -
-      fi
-    } | sort -u
-  ) -Ob -o "$FILTERED_BCF" "$TMP_BCF"
-else
-  log "No FAM/SAMPLE exclusion selected; pass-through"
-  bcftools view -Ob -o "$FILTERED_BCF" "$TMP_BCF"
-fi
+log "Applying selected exclusions -> $FILTERED_BCF"
+tmp_kept_vcf="$OUT_PREFIX.kept.tmp.vcf.gz"
+
+{ bcftools view -h "$IN_VCF"
+  bcftools view -H "$IN_VCF" \
+  | awk -v FS="\t" -v OFS="\t" \
+         -v fam_list="$FAM_LIST" -v samp_list="$SAMP_LIST" \
+         -v use_fam="$EXCLUDE_MULTIPLEX" -v use_samp="$EXCLUDE_CONCERNING" \
+         -v fam_tag="$FAMILY_TAG" -v samp_tag="$SAMPLE_TAG" '
+  BEGIN{
+    if (use_fam=="yes" && system("[ -s \""fam_list"\" ]")==0){
+      while ((getline l < fam_list)>0){ sub(/\r$/,"",l); if(l!="") F[l]=1 }
+      close(fam_list)
+    }
+    if (use_samp=="yes" && system("[ -s \""samp_list"\" ]")==0){
+      while ((getline l < samp_list)>0){ sub(/\r$/,"",l); if(l!="") S[l]=1 }
+      close(samp_list)
+    }
+  }
+  function get(info,key,a){ return match(info, "(^|;)"key"=([^;]*)", a) ? a[2] : "" }
+  # does any comma-separated token exist in assoc array A?
+  function any_in(val,A){ if(val=="") return 0; { if(val in A) return 1 } return 0 }
+  {
+    info = $8
+    fam  = get(info, fam_tag)
+    samp = get(info, samp_tag)
+    drop = 0
+    if (tolower(use_fam)=="yes"  && any_in(fam,  F)) drop=1
+    if (tolower(use_samp)=="yes" && any_in(samp, S)) drop=1
+    if (!drop) print
+  }'
+} | bgzip -c > "$tmp_kept_vcf"
+
+tabix -f -p vcf "$tmp_kept_vcf"
+bcftools view -Ob -o "$FILTERED_BCF" "$tmp_kept_vcf"
 bcftools index -f "$FILTERED_BCF"
 
 # =============================
-# Step 3: Optional coding exclusion (LOF + high-REVEL missense)
-# =============================
+# Step 2: Optional coding exclusion (LOF + high-REVEL missense)
+# =============================  
 NONCODING_BCF="$OUT_PREFIX.filtered.vep.bcf"
 if [[ "$EXCLUDE_CODING" == "yes" ]]; then
-  log "Excluding LOF & missense(REVEL>$REVEL_THRESH) -> $NONCODING_BCF"
+  log "Excluding LOF & missense(REVEL>=$REVEL_THRESH) -> $NONCODING_BCF"
   bcftools +split-vep \
-    -c REVEL:Float \
-    -i "(Consequence!~\"$LOF_REGEX\") && (Consequence!~\"$MISSENSE_TERM\" || REVEL<=$REVEL_THRESH)" \
-    -Ou "$FILTERED_BCF" \
-  | bcftools annotate -x 'INFO/Consequence,INFO/REVEL' \
-    -Ob -o "$NONCODING_BCF"
+    -c Consequence,REVEL:Float \
+    -e "(Consequence~\"$LOF_REGEX\") || (Consequence~\"$MISSENSE_TERM\" && REVEL>=$REVEL_THRESH)" \
+    -Ob -o "$NONCODING_BCF" "$FILTERED_BCF"
 else
   log "Skipping coding exclusion; pass-through -> $NONCODING_BCF"
   bcftools view -Ob -o "$NONCODING_BCF" "$FILTERED_BCF"
@@ -340,15 +341,15 @@ fi
 bcftools index -f "$NONCODING_BCF"
 
 # =============================
-# Step 4: Counts
+# Step 3: Counts
 # =============================
-N_IN=$(bcftools view -H "$TMP_BCF" | wc -l || echo 0)
+N_IN=$(bcftools view -H "$tmp_kept_vcf" | wc -l || echo 0)
 N_AFTER_FS=$(bcftools view -H "$FILTERED_BCF" | wc -l || echo 0)
 N_AFTER_CODE=$(bcftools view -H "$NONCODING_BCF" | wc -l || echo 0)
 log "[INFO] Counts | Input=$N_IN | After FAM/SAMPLE=$N_AFTER_FS | After coding exclusion=$N_AFTER_CODE"
 
 # =============================
-# Step 5: SEX annotation
+# Step 4: SEX annotation
 # =============================
 FINAL_BCF="$OUT_PREFIX.filtered.vep.with_asdinfo.bcf"
 if [[ "$TYPE" == "inh" ]]; then
@@ -379,7 +380,7 @@ log "DONE. Final: $FINAL_BCF"
 # Cleanup
 # =============================
 log "Cleaning up temporary files"
-rm -f "$TMP_BCF" "$TMP_BCF".csi
+rm -f "$tmp_kept_vcf" "$tmp_kept_vcf.tbi"
 rm -f "$FILTERED_BCF" "$FILTERED_BCF".csi
 rm -f "$NONCODING_BCF" "$NONCODING_BCF".csi
 rm -f "$CACHE" "$CACHE".tbi
