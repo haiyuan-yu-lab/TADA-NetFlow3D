@@ -27,7 +27,7 @@ set -eo pipefail
 # -----------------------------
 TYPE="dnm"  # dnm | inh
 VEP_ANNO_DIR="/fs/cbsuhy01/storage/yz2676/projects/1-ASD/NetFlow_ASD/Yutong_scripts/data/annotated"
-DNV_VEP_REL="dnm/UCSF_20211001_dnms_WGS_hg38.with_vep.vcf.gz"
+DNV_VEP_REL="dnm/UCSF_20211001_dnms_WGS_hg38.no_match.with_vep.vcf.gz"
 INH_VEP_REL="inh/All_inherited_WGS_hg38.with_vep.vcf.gz"
 
 PHENO="/fs/cbsuhy01/storage/NetFlow_ASD/Week8_429/SSC+SPARK+KOR-STAR_parsed.txt"

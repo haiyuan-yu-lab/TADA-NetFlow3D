@@ -79,7 +79,7 @@ run_vep_sites() {
       --compress_output bgzip \
       --fork "$fork" --buffer_size "$buf" \
       --sift b --polyphen b \
-      --plugin REVEL,file="$REVEL_TSV" \
+      --plugin REVEL,file="$REVEL_TSV",no_match=1 \
       --plugin CADD,snv="$CADD_SNV",indels="$CADD_INDEL" \
       ${gnomad_vcf:+--custom file="$gnomad_vcf",short_name=gnomADg_v3,format=vcf,type=exact,fields=AF} \
       --custom file="$PHYLOP_BW",short_name=phyloP100way,format=bigwig,type=exact \

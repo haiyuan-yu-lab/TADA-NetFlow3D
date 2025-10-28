@@ -10,7 +10,8 @@ set -euo pipefail
 FIELDS="CHROM,POS,REF,ALT,INFO/CSQ"
 
 echo "== Annotate de novo vcf with VEP =="
-dnm_vep="$DNM_OUT_DIR/UCSF_20211001_dnms_WGS_hg38.vep.vcf.gz"
+dnm_file_prefix="UCSF_20211001_dnms_WGS_hg38.no_match"
+dnm_vep="$DNM_OUT_DIR/$dnm_file_prefix.vep.vcf.gz"
 tabix -f -p vcf "$dnm_vep"
 
 bcftools view -h "$dnm_vep" | grep '^##INFO=<ID=CSQ' > $DNM_OUT_DIR/csq.hdr
@@ -18,15 +19,16 @@ bcftools query -f '%CHROM\t%POS\t%REF\t%ALT\t%INFO/CSQ\n' "$dnm_vep" \
 | bgzip > $DNM_OUT_DIR/csq.4key.tsv.gz
 tabix -s1 -b2 -e2 $DNM_OUT_DIR/csq.4key.tsv.gz
 
+dnm_with_vep="$DNM_OUT_DIR/$dnm_file_prefix.with_vep.vcf.gz"
 bcftools annotate \
   -a $DNM_OUT_DIR/csq.4key.tsv.gz \
   -c $FIELDS \
   -h $DNM_OUT_DIR/csq.hdr \
-  -Oz -o $DNM_OUT_DIR/UCSF_20211001_dnms_WGS_hg38.with_vep.vcf.gz \
+  -Oz -o $dnm_with_vep \
   "$DNM_VCF"
 
-tabix -f -p vcf "$DNM_OUT_DIR/UCSF_20211001_dnms_WGS_hg38.with_vep.vcf.gz"
-echo "Done: $DNM_OUT_DIR/UCSF_20211001_dnms_WGS_hg38.with_vep.vcf.gz"
+tabix -f -p vcf "$dnm_with_vep"
+echo "Done: $dnm_with_vep"
 
 rm $DNM_OUT_DIR/csq.hdr $DNM_OUT_DIR/csq.4key.tsv.gz $DNM_OUT_DIR/csq.4key.tsv.gz.tbi
 
