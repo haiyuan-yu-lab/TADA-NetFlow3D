@@ -3,7 +3,9 @@ import pysam
 import tempfile
 import pybedtools
 import pandas as pd
+import numpy as np
 
+from scipy.stats import fisher_exact
 from utils import ensure_parent_dir, run_command
 from typing import Dict, Iterable, Tuple, Union, Set, List, Optional
 
@@ -61,11 +63,15 @@ class VCFHandler:
         """
         Normalize TYPE predicates to use the virtual TYPE field.
         """
-        aliases = {"SNV": "snp", "SNP": "snp", "INDEL": "indel", "Indel": "indel"}
-        for i, (field, op, value) in enumerate(preds):
+        aliases = {"SNV": "snp", "SNP": "snp", "snv": "snp", 
+                   "INDEL": "indel", "Indel": "indel", "InDel": "indel"}
+        out = []
+        for _, (field, op, value) in enumerate(preds):
             if field == "TYPE": # use virtual field instead of INFO field
-                preds[i] = ("TYPE", op, aliases.get(value))
-        return preds
+                out.append((field, op, aliases.get(value)))
+            else:
+                out.append((field, op, value))
+        return out
 
     def _norm_type_in_groups(self, groups: Iterable[Iterable[Tuple[str, str, object]]],
                             info_tags: Set[str]
@@ -236,7 +242,7 @@ class VCFHandler:
         Return the total number of variant record in vcf_path.
         """
         self.ensure_index(vcf_path)
-        return run_command(["bcftools", "index", "--nrecords", vcf_path], capture=True)
+        return run_command(["bcftools", "index", "--nrecords", vcf_path], capture=True).strip()
 
     def isec_unique(self, a_vcf_path: str, b_vcf_path: str, output_path: str):
         """
@@ -295,7 +301,7 @@ class VCFBEDOverlapper:
         
         pybedtools.BedTool.from_dataframe(bed
                 ).filter(
-                    lambda x: x.chrom in {f"chr{str(i)}" for i in range(1, 23)}.union({"chrX", "chrY"})
+                    lambda x: x.chrom in {f"chr{str(i)}" for i in range(1, 23)} # autosomes only (stat model assumption)
                 ).sort(faidx=faidx_path).merge().saveas(merged_bed)
         return merged_bed
 
@@ -322,6 +328,14 @@ class VCFBEDOverlapper:
         bed[0] = bed[0].apply(harmonize)
         return bed
 
+    def _is_autosome(self, chrom: str) -> bool:
+        """
+        Check if the chromosome is an autosome (1-22).
+        """
+        if chrom.startswith("chr"):
+            chrom = chrom[3:]
+        return chrom.isdigit() and 1 <= int(chrom) <= 22
+    
     def map_variants_to_bed(self, vcf_path: str, names: List[str],
                             file: str, write_overlap_vcf: bool = False) -> None:
         """
@@ -351,25 +365,45 @@ class VCFBEDOverlapper:
                 os.path.join(self.enhancer_dir, bed_name, 
                              f"{self.enhancer_prefix}.bed"), sep="\t", header=None
             ) for bed_name in bed_names], ignore_index=True)
-            sorted_bed_path = self._write_nonoverlap(bed_region, name)
+            sorted_bed_path = self._write_nonoverlap(bed_region, name) # keep only autosomes
 
+            # Keep only autosomal chromosomes (statistical model assumption)
+            bed_df = self._harmonize_chrom_names(vcf_path, sorted_bed_path)
+            bed_bt = pybedtools.BedTool.from_dataframe(bed_df)
+
+            vcf_bt = pybedtools.BedTool(vcf_path)
             if write_overlap_vcf:
-                overlap_bed = pybedtools.BedTool.from_dataframe(
-                    self._harmonize_chrom_names(vcf_path, sorted_bed_path)).intersect(
-                    pybedtools.BedTool(vcf_path), wa=True, wb=True
-                    )
+                overlap_bed = bed_bt.intersect(vcf_bt, wa=True, wb=True)
             else:
-                overlap_bed = pybedtools.BedTool.from_dataframe(
-                    self._harmonize_chrom_names(vcf_path, sorted_bed_path)).intersect(
-                    pybedtools.BedTool(vcf_path), wa=True
-                    )
-            overlap_bed.saveas(os.path.join(
-                self.output_dir, name, file
-            ))
+                overlap_bed = bed_bt.intersect(vcf_bt, wa=True)
+            overlap_bed.saveas(os.path.join(self.output_dir, name, file))
 
-# def fisher_exact_onesided():
-#     pass
+class StatisticalTests:
+    """
+    A class for statistical tests on variants.
+    """
+    def __init__(self):
+        pass
 
-# def write_summary():
-#     pass
+    def fisher_exact_onesided(self, a: int, b: int, c: int, d: int
+                              ) -> Tuple[float, float, float, float]:
+        """
+        Test whether the association between two categorical variables (A, B) is significant
+        using one-sided Fisher's exact test. 
 
+        Args
+        ----
+        a : int
+            Count in group A with condition.
+        b : int
+            Total count in group A.
+        c : int
+            Count in group B with condition.
+        d : int
+            Total count in group B.
+        """
+        table = np.array([[a, b-a], [c, d-c]])
+        odds_ratio, p_value = fisher_exact(table, alternative='greater')
+        SE_log_OR = np.sqrt(1/a + 1/(b-a) + 1/c + 1/(d-c))
+
+        return (odds_ratio, np.log(odds_ratio), SE_log_OR, p_value)
