@@ -63,12 +63,28 @@ run_vep_sites() {
   require_file "$PHYLOP_BW"
   require_file "$PHCONS_BW"
 
-  # If input is per-chrom, pick the correct gnomAD file
-  local chr="$(zcat "$in_vcf" | awk '$1!~/^#/{print $1; exit}')"
-  local gnomad_vcf=""
-  if [[ "$chr" =~ ^chr[0-9XY]+$ ]]; then
-    gnomad_vcf="$(gnomad_sites_vcf_for_chr "$chr")"
+  # --- determine chromosomes present in input ---
+  # normalize to {1..22,X,Y}, and build "chr*" names
+  mapfile -t _chroms < <(
+    zcat "$in_vcf" \
+      | awk '$1!~/^#/{print $1}' \
+      | awk '!seen[$0]++' \
+      | awk '$0~/^([1-9]|1[0-9]|2[0-2]|X|Y)$/ {print "chr"$0}'
+  )
+  # --- build gnomAD --custom args ---
+  local -a GNOMAD_CUSTOMS=()
+  if ((${#_chroms[@]}==1)); then
+    local chrom="${_chroms[0]}"
+    local gnomad_vcf="$(gnomad_sites_vcf_for_chr "$chrom")"
     require_file "$gnomad_vcf"
+    GNOMAD_CUSTOMS=( --custom "file=$gnomad_vcf,short_name=gnomADg_v3,format=vcf,type=exact,fields=AF" )
+  elif ((${#_chroms[@]}>1)); then
+    local c v
+    for c in "${_chroms[@]}"; do
+      v="$(gnomad_sites_vcf_for_chr "$c")"
+      require_file "$v"
+      GNOMAD_CUSTOMS+=( --custom "file=$v,short_name=gnomADg_v3,format=vcf,type=exact,fields=AF" )
+    done
   fi
 
   vep -i "$in_vcf" \
@@ -81,7 +97,7 @@ run_vep_sites() {
       --sift b --polyphen b \
       --plugin REVEL,file="$REVEL_TSV",no_match=1 \
       --plugin CADD,snv="$CADD_SNV",indels="$CADD_INDEL" \
-      ${gnomad_vcf:+--custom file="$gnomad_vcf",short_name=gnomADg_v3,format=vcf,type=exact,fields=AF} \
+      "${GNOMAD_CUSTOMS[@]}" \
       --custom file="$PHYLOP_BW",short_name=phyloP100way,format=bigwig,type=exact \
       --custom file="$PHCONS_BW",short_name=phastCons100way,format=bigwig,type=exact \
       --fields "$VEP_FIELDS" \

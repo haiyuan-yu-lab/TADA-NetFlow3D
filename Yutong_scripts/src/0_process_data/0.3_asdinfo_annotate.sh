@@ -343,7 +343,7 @@ bcftools index -f "$NONCODING_BCF"
 # =============================
 # Step 3: Counts
 # =============================
-N_IN=$(bcftools view -H "$tmp_kept_vcf" | wc -l || echo 0)
+N_IN=$(bcftools view -H "$IN_VCF" | wc -l || echo 0)
 N_AFTER_FS=$(bcftools view -H "$FILTERED_BCF" | wc -l || echo 0)
 N_AFTER_CODE=$(bcftools view -H "$NONCODING_BCF" | wc -l || echo 0)
 log "[INFO] Counts | Input=$N_IN | After FAM/SAMPLE=$N_AFTER_FS | After coding exclusion=$N_AFTER_CODE"
