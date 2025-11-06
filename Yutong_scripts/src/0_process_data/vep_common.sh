@@ -95,11 +95,12 @@ run_vep_sites() {
       --compress_output bgzip \
       --fork "$fork" --buffer_size "$buf" \
       --sift b --polyphen b \
+      --af_gnomadg \
       --plugin REVEL,file="$REVEL_TSV",no_match=1 \
       --plugin CADD,snv="$CADD_SNV",indels="$CADD_INDEL" \
       "${GNOMAD_CUSTOMS[@]}" \
-      --custom file="$PHYLOP_BW",short_name=phyloP100way,format=bigwig,type=exact \
-      --custom file="$PHCONS_BW",short_name=phastCons100way,format=bigwig,type=exact \
+      --custom file="$PHYLOP_BW",short_name=phyloP100way,format=bigwig,type=overlap,summary_stats=max \
+      --custom file="$PHCONS_BW",short_name=phastCons100way,format=bigwig,type=overlap,summary_stats=max \
       --fields "$VEP_FIELDS" \
       -o "$out_vcf" \
       --verbose

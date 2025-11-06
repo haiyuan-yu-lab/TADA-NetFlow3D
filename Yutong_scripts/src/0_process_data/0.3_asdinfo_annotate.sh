@@ -17,7 +17,7 @@
 # sbatch src/0_process_data/0.3_asdinfo_annotate.sh --type dnm 
 #    --exclude-multiplex yes --exclude-concerning yes --exclude-coding yes
 # 2) For inherited variants:
-# sbatch src/0_process_data/0.3_asdinfo_annotate.sh --type inh 
+# sbatch src/0_process_data/0.3_asdinfo_annotate.sh --type inh --exclude-multiplex no --keep-only-multiplex yes
 # 3) DNV with coding variants kept:
 # sbatch src/0_process_data/0.3_asdinfo_annotate.sh --type dnm --exclude-coding no --out-prefix UCSF_20211001_dnms_WGS_hg38.codingkept
 
@@ -27,7 +27,7 @@ set -eo pipefail
 # -----------------------------
 TYPE="dnm"  # dnm | inh
 VEP_ANNO_DIR="/fs/cbsuhy01/storage/yz2676/projects/1-ASD/NetFlow_ASD/Yutong_scripts/data/annotated"
-DNV_VEP_REL="dnm/UCSF_20211001_dnms_WGS_hg38.no_match.with_vep.vcf.gz"
+DNV_VEP_REL="dnm/UCSF_20211001_dnms_WGS_hg38.with_vep.vcf.gz"
 INH_VEP_REL="inh/All_inherited_WGS_hg38.with_vep.vcf.gz"
 
 PHENO="/fs/cbsuhy01/storage/NetFlow_ASD/Week8_429/SSC+SPARK+KOR-STAR_parsed.txt"
@@ -38,7 +38,7 @@ FAMILY_TAG="FAM"
 SAMPLE_TAG="SAMPLE"
 
 # LOF & missense thresholds
-LOF_REGEX="frameshift_variant\|splice_acceptor_variant\|splice_donor_variant\|splice_donor_5th_base_variant\|stop_gained\|stop_lost\|start_lost"
+LOF_REGEX="frameshift_variant\|splice_acceptor_variant\|splice_donor_variant\|stop_gained\|stop_lost\|start_lost\|inframe_deletion\|inframe_insertion\|protein_altering_variant"
 MISSENSE_TERM="missense_variant"
 REVEL_THRESH=0.5
 
@@ -51,6 +51,7 @@ THREADS="${THREADS:-8}"
 EXCLUDE_MULTIPLEX="yes"     # yes|no
 EXCLUDE_CONCERNING="yes"    # yes|no
 EXCLUDE_CODING="yes"        # yes|no  (drop LOF + missense with REVEL>thres)
+KEEP_ONLY_MULTIPLEX="no"    # yes|no
 
 # -----------------------------
 # Parse args
@@ -72,6 +73,7 @@ while [[ $# -gt 0 ]]; do
     --exclude-multiplex)  EXCLUDE_MULTIPLEX="$2"; shift 2;;
     --exclude-concerning) EXCLUDE_CONCERNING="$2"; shift 2;;
     --exclude-coding)     EXCLUDE_CODING="$2"; shift 2;;
+    --keep-only-multiplex) KEEP_ONLY_MULTIPLEX="$2"; shift 2;;
     --revel)              REVEL_THRESH="$2"; shift 2;;
     --help|-h)            SHOW_HELP=1; shift;;
     --)                   shift; break;;
@@ -264,11 +266,22 @@ fi
 
 log "[INFO] TYPE=$TYPE | IN_VCF=$IN_VCF"
 log "[INFO] OUT_PREFIX=$OUT_PREFIX"
-log "[INFO] TOGGLES: exclude_multiplex=$EXCLUDE_MULTIPLEX, exclude_concerning=$EXCLUDE_CONCERNING, exclude_coding=$EXCLUDE_CODING"
+log "[INFO] TOGGLES: exclude_multiplex=$EXCLUDE_MULTIPLEX, exclude_concerning=$EXCLUDE_CONCERNING, exclude_coding=$EXCLUDE_CODING, keep_only_multiplex=$KEEP_ONLY_MULTIPLEX"
 log "[INFO] THREADS=$THREADS"
 
 # Build lists only if that exclusion is ON and no custom list provided (or default path used)
+if [[ "$EXCLUDE_MULTIPLEX" == "yes" && "$KEEP_ONLY_MULTIPLEX" == "yes" ]]; then
+  log "ERROR: exclude_multiplex and keep_only_multiplex are mutually exclusive"; exit 1
+fi
+
 if [[ "$EXCLUDE_MULTIPLEX" == "yes" ]]; then
+  if [[ ! -s "$FAM_LIST" || "$FAM_LIST" == "$ASD_DIR/multiplex_families.txt" ]]; then
+    build_multiplex_list
+  else
+    log "Using provided multiplex family list: $FAM_LIST"
+  fi
+fi
+if [[ "$KEEP_ONLY_MULTIPLEX" == "yes" ]]; then
   if [[ ! -s "$FAM_LIST" || "$FAM_LIST" == "$ASD_DIR/multiplex_families.txt" ]]; then
     build_multiplex_list
   else
@@ -284,7 +297,7 @@ if [[ "$EXCLUDE_CONCERNING" == "yes" ]]; then
 fi
 
 # -----------------------------
-# Step 1: Exclude multiplex families and concerning siblings
+# Step 1: Exclude/keep multiplex families and concerning siblings
 # -----------------------------
 FILTERED_BCF="$OUT_PREFIX.filtered.bcf"
 log "Applying selected exclusions -> $FILTERED_BCF"
@@ -295,9 +308,11 @@ tmp_kept_vcf="$OUT_PREFIX.kept.tmp.vcf.gz"
   | awk -v FS="\t" -v OFS="\t" \
          -v fam_list="$FAM_LIST" -v samp_list="$SAMP_LIST" \
          -v use_fam="$EXCLUDE_MULTIPLEX" -v use_samp="$EXCLUDE_CONCERNING" \
+         -v keep_only="$KEEP_ONLY_MULTIPLEX" \
          -v fam_tag="$FAMILY_TAG" -v samp_tag="$SAMPLE_TAG" '
   BEGIN{
-    if (use_fam=="yes" && system("[ -s \""fam_list"\" ]")==0){
+    need_fam = (tolower(use_fam)=="yes" || tolower(keep_only)=="yes")
+    if (need_fam && system("[ -s \""fam_list"\" ]")==0){
       while ((getline l < fam_list)>0){ sub(/\r$/,"",l); if(l!="") F[l]=1 }
       close(fam_list)
     }
@@ -314,8 +329,9 @@ tmp_kept_vcf="$OUT_PREFIX.kept.tmp.vcf.gz"
     fam  = get(info, fam_tag)
     samp = get(info, samp_tag)
     drop = 0
-    if (tolower(use_fam)=="yes"  && any_in(fam,  F)) drop=1
-    if (tolower(use_samp)=="yes" && any_in(samp, S)) drop=1
+    if (tolower(keep_only)=="yes"){ if (!any_in(fam, F)) drop=1}
+    if (!drop && tolower(use_fam)=="yes"){ if (any_in(fam, F)) drop=1}
+    if (!drop && tolower(use_samp)=="yes"){ if (any_in(samp, S)) drop=1 }
     if (!drop) print
   }'
 } | bgzip -c > "$tmp_kept_vcf"
@@ -333,7 +349,9 @@ if [[ "$EXCLUDE_CODING" == "yes" ]]; then
   bcftools +split-vep \
     -c Consequence,REVEL:Float \
     -e "(Consequence~\"$LOF_REGEX\") || (Consequence~\"$MISSENSE_TERM\" && REVEL>=$REVEL_THRESH)" \
-    -Ob -o "$NONCODING_BCF" "$FILTERED_BCF"
+    -Ou "$FILTERED_BCF" \
+    | bcftools annotate -x 'INFO/Consequence,INFO/REVEL' \
+      -Ob -o "$NONCODING_BCF"
 else
   log "Skipping coding exclusion; pass-through -> $NONCODING_BCF"
   bcftools view -Ob -o "$NONCODING_BCF" "$FILTERED_BCF"

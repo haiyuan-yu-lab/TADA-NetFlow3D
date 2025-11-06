@@ -10,7 +10,7 @@ set -euo pipefail
 FIELDS="CHROM,POS,REF,ALT,INFO/CSQ"
 
 echo "== Annotate de novo vcf with VEP =="
-dnm_file_prefix="UCSF_20211001_dnms_WGS_hg38.no_match"
+dnm_file_prefix="UCSF_20211001_dnms_WGS_hg38"
 dnm_vep="$DNM_OUT_DIR/$dnm_file_prefix.vep.vcf.gz"
 tabix -f -p vcf "$dnm_vep"
 
