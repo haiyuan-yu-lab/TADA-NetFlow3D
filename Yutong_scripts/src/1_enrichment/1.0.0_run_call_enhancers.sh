@@ -2,7 +2,6 @@
 #SBATCH --job-name=call_enhancers
 #SBATCH -o logs/call_enhancers.%A_%a.out
 #SBATCH -e logs/call_enhancers.%A_%a.err
-#SBATCH --chdir=/fs/cbsuhy01/storage/yz2676/projects/1-ASD/NetFlow_ASD/Yutong_scripts
 
 set -euo pipefail
 
@@ -12,7 +11,10 @@ DIV_EXT_LEFT="${3:-60}"
 DIV_EXT_RIGHT="${4:-60}"
 SINGLE_EXT_LEFT="${5:-60}"
 SINGLE_EXT_RIGHT="${6:-60}"
-PROMOTER_FILE="${7:-None}"
+PROMOTER_FILE="${7:-}"
+ELEMENT_NAME="${8:-all_peaks_element}"
+shift 8
+EXTRA_ARGS=("$@") 
 
 mkdir -p "$OUTPUT_DIR"
 
@@ -45,10 +47,12 @@ srun python src/1_enrichment/call_enhancers.py \
     --bw-mn "$BW_MN" \
     --output-path "$ENH_DIR" \
     --job-name "$CELL_TYPE" \
+    --element-name "$ELEMENT_NAME" \
     --div-ext-left "$DIV_EXT_LEFT" \
     --div-ext-right "$DIV_EXT_RIGHT" \
     --single-ext-left "$SINGLE_EXT_LEFT" \
     --single-ext-right "$SINGLE_EXT_RIGHT" \
-    --promoter-file "$PROMOTER_FILE"
+    ${PROMOTER_FILE:+--promoter-file "$PROMOTER_FILE"} \
+    "${EXTRA_ARGS[@]}"
 
 log "Finished cell_type: $CELL_TYPE"

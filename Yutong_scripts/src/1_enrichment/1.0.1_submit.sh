@@ -7,7 +7,12 @@ DIV_EXT_LEFT=200
 DIV_EXT_RIGHT=200
 SINGLE_EXT_LEFT=200
 SINGLE_EXT_RIGHT=200
-PROMOTER_FILE="/fs/cbsuhy01/storage/NetFlow_ASD/Week8_429/Promoters/promoters_1kb_tss_centered.coding.v43.bed"
+PROMOTER_FILE="/fs/cbsuhy01/storage/NetFlow_ASD/Week8_429/Promoters/promoters_2kb_tss_centered.coding.v43.bed"
+INCLUDE_UNIDIRECTIONAL=False
+ELEMENT_NAME="bidirectional_peaks_element_2kb"
+
+iu_flag=()
+[[ "$INCLUDE_UNIDIRECTIONAL" == "True" ]] && iu_flag+=(--include-unidirectional)
 
 # Count lines; assume header on line 1
 LINES=$(wc -l < "$TSV")
@@ -19,4 +24,5 @@ echo "Submitting array ${ARRAY_SPEC} for TSV: $TSV"
 sbatch --array="${ARRAY_SPEC}" \
        src/1_enrichment/1.0.0_run_call_enhancers.sh \
        "$TSV" "$OUTPUT_DIR" \
-       "$DIV_EXT_LEFT" "$DIV_EXT_RIGHT" "$SINGLE_EXT_LEFT" "$SINGLE_EXT_RIGHT" "$PROMOTER_FILE"
+       "$DIV_EXT_LEFT" "$DIV_EXT_RIGHT" "$SINGLE_EXT_LEFT" "$SINGLE_EXT_RIGHT" "$PROMOTER_FILE" \
+       "$ELEMENT_NAME" "${iu_flag[@]}"

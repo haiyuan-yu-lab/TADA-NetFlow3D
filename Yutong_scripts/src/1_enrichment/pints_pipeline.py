@@ -157,7 +157,8 @@ class PintsPipeline:
                              div_ext_left: int = 60, div_ext_right: int = 60,
                              single_ext_left: int = 60, single_ext_right: int = 60,
                              enhancer: bool = False, promoter: bool = False,
-                             merged_prefix: str = "all_peaks_element"):
+                             merged_prefix: str = "all_peaks_element",
+                             include_unidirectional: bool = True):
         """
         Concatenate peaks and save as a final output.
 
@@ -182,8 +183,12 @@ class PintsPipeline:
             proximal elements (default: False)
         merged_prefix : str, optional
             Prefix for the merged output files (default: "all_peaks_element")
+        include_unidirectional : bool, optional
+            If True, include unidirectional peaks in the merging (default: True)
         """
-        CATEGORIES = ("bidirectional", "divergent", "unidirectional")
+        categories = ["bidirectional", "divergent"]
+        if include_unidirectional:
+            categories.append("unidirectional")
 
         if element_dir is None:
             element_dir = self.peak_dir
@@ -197,7 +202,7 @@ class PintsPipeline:
         cat_paths = [
             self._bed_path(f"{element_dir}/{self.file_prefix}", 
                            cat, div_ext_left, distal=False)
-            for cat in CATEGORIES
+            for cat in categories
         ]
         all_df = self._union_beds(cat_paths)
         out_all = f"{element_dir}/{merged_prefix}_{div_ext_left}bp.bed"
@@ -207,7 +212,7 @@ class PintsPipeline:
             distal_paths = [
                 self._bed_path(f"{element_dir}/{self.file_prefix}", 
                                cat, div_ext_left, distal=True)
-                for cat in CATEGORIES
+                for cat in categories
             ]
             enh_df = self._union_beds(distal_paths)
 

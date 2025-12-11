@@ -9,15 +9,17 @@ def args_parser():
     parser.add_argument("--bw-pl", required=True, help="Path to the plus strand bigwig file.")
     parser.add_argument("--bw-mn", required=True, help="Path to the minus strand bigwig file.")
     parser.add_argument("--output-path", required=True, help="Directory to save output files.")
-    parser.add_argument("--job-name", required=True, help="Prefix for output files.")
+    parser.add_argument("--job-name", required=True, help="Prefix for peaks calling output files.")
+    parser.add_argument("--element-name", default="all_peaks_element", help="Name for the final merged elements.")
     parser.add_argument("--alpha", type=float, default=0.3, help="Stringency for clustering TSSs into a peak (default: 0.3).")
     parser.add_argument("--disable-sticks", action='store_true', help="Remove stick-like peaks (default: False).")
     parser.add_argument("--thread", type=int, default=16, help="Number of threads to use (default: 16).")
+    parser.add_argument("--include-unidirectional", action='store_true', help="Include unidirectional peaks in the final merging.")
     parser.add_argument("--div-ext-left", type=int, default=60, help="Divergent extension left (default: 60).")
     parser.add_argument("--div-ext-right", type=int, default=60, help="Divergent extension right (default: 60).")
     parser.add_argument("--single-ext-left", type=int, default=60, help="Unidirectional extension left (default: 60).")
     parser.add_argument("--single-ext-right", type=int, default=60, help="Unidirectional extension right (default: 60).")
-    parser.add_argument("--promoter-file", help="Path to the promoter BED file for boundary extension.")
+    parser.add_argument("--promoter-file", type=str, help="Path to the promoter BED file for boundary extension.")
     return parser.parse_args()
 
 def main(args):
@@ -40,10 +42,12 @@ def main(args):
                                   div_ext_right=args.div_ext_right,
                                   single_ext_left=args.single_ext_left,
                                   single_ext_right=args.single_ext_right,
+                                  include_unidirectional=True if args.include_unidirectional else False,
+                                  merged_prefix=args.element_name,
                                   enhancer=True, promoter=True)
     
     # Clear intermediate files
-    pints.clear_intermediate_files()
+    # pints.clear_intermediate_files()
 
 if __name__ == "__main__":
     args = args_parser()
