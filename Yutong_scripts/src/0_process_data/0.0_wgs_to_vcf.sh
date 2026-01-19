@@ -1,5 +1,17 @@
 #!/bin/bash
-# Transform WGS data (DNV, Inherited) to VCF format
+#SBATCH --job-name=wgs_to_vcf.parents
+#SBATCH -o logs/wgs_to_vcf.parents.%j.out
+#SBATCH -e logs/wgs_to_vcf.parents.%j.err
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=yz2676@cornell.edu
+
+#SBATCH -N 1
+#SBATCH --ntasks-per-node=1
+#SBATCH --mem=64G
+#SBATCH --time=48:00:00
+#SBATCH --nodelist=cbsuhy02
+
+# Transform WGS data (DNV, Inherited and Parents) to VCF format
 # Data cleaning: keep only primary contigs
 
 ## Raw files
@@ -7,6 +19,7 @@ wgs_var_dir=/fs/cbsuhy01/storage/NetFlow_ASD/Week8_429/UCSF_raw
 
 dnv_var=UCSF_20211001_dnms_WGS_hg38.tsv
 inherited_var=("KOR-STAR" "SPARK_WGS_1" "SPARK_WGS_2" "SPARK_WGS_3" "SSC_WGS9209s")
+parents_var=/fs/cbsuhy01/storage/NetFlow_ASD/Week8_429/Variants/UCSF_Parent.txt.gz
 
 ## Reference
 ref=/fs/cbsuhy01/storage/yz2676/data/DetailedProCapNet/wdir/reference/hg38.22XY.fasta
@@ -216,4 +229,41 @@ if ((${#inputs[@]})); then
   tabix -f -p vcf "$inh_var_vcf".gz
 fi
 
-rm -f "$data_dir/"*.body.primary.vcf "$inh_header" "$data_dir/contigs.hdr"
+rm -f "$data_dir/"*.body.primary.vcf "$inh_header"
+
+# Process Parents variants
+echo "Processing Parents"
+parents_var_vcf=$data_dir/UCSF_Parents_WGS_hg38.vcf
+{
+  printf '##fileformat=VCFv4.2\n'
+  printf '##INFO=<ID=SAMPLE,Number=1,Type=String,Description="Sample_ID">\n'
+  printf '#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n'
+} > "$data_dir/parents_header.vcf"
+
+gzip -cd "$parents_var" \
+| awk -F'\t' -v OFS='\t' -v PRIMARY="$primary_set_regex" '
+NR==1{
+  # map header -> index (robust to ordering)
+  for(i=1;i<=NF;i++){k=$i; gsub(/^[#]+/,"",k); H[k]=i}
+  next
+}
+{
+  chrom=$(H["chr"]); sub(/^chr/,"",chrom)
+  if (chrom !~ PRIMARY) next
+
+  pos=$(H["pos"])
+  ref=$(H["ref"])
+  alt=$(H["alt"])
+  sample=$(H["SampleID"])
+
+  info="SAMPLE="sample;
+  print chrom, pos, ".", ref, alt, ".", "PASS", info
+}' > "$data_dir/parents_body.vcf"
+
+cat "$data_dir/parents_header.vcf" "$data_dir/parents_body.vcf" \
+| bcftools annotate -h "$data_dir/contigs.hdr" -Ou \
+| bcftools sort -Oz -o "$parents_var_vcf".gz
+
+tabix -f -p vcf "$parents_var_vcf".gz
+
+rm -f "$data_dir/parents_header.vcf" "$data_dir/parents_body.vcf" "$data_dir/contigs.hdr"

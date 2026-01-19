@@ -2,6 +2,14 @@
 #SBATCH --job-name=annotate_vcf
 #SBATCH -o logs/annotate_vcf.%j.out
 #SBATCH -e logs/annotate_vcf.%j.err
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=yz2676@cornell.edu
+
+#SBATCH -N 1
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=32G
+#SBATCH --time=480:00:00
+#SBATCH --nodelist=cbsuhy02
 
 source src/0_process_data/vep.env
 source src/0_process_data/vep_common.sh
@@ -69,6 +77,47 @@ echo "== Concatenate inherited =="
 bcftools concat -Oz -o "$INH_OUT_DIR/All_inherited_WGS_hg38.with_vep.vcf.gz" "${outs[@]}"
 tabix -f -p vcf "$INH_OUT_DIR/All_inherited_WGS_hg38.with_vep.vcf.gz"
 echo "Done: $INH_OUT_DIR/All_inherited_WGS_hg38.with_vep.vcf.gz"
+
+# Clean up temps
+rm -f "${tmpfiles[@]}"
+
+
+echo "== Annotate parents per chromosome =="
+outs=()
+tmpfiles=()
+csq_hdr="$PARENTS_OUT_DIR/csq.hdr"
+bcftools view -h "$PARENTS_OUT_DIR/UCSF_parents_WGS_hg38.${CHROMS[0]}.vep.vcf.gz" \
+| grep '^##INFO=<ID=CSQ' > "$csq_hdr"
+for CHR in "${CHROMS[@]}"; do
+    parent_vep="$PARENTS_OUT_DIR/UCSF_parents_WGS_hg38.${CHR}.vep.vcf.gz"
+    out_chr="$PARENTS_OUT_DIR/UCSF_parents_WGS_hg38.${CHR}.with_vep.vcf.gz"
+    CHR_NC="${CHR//chr/}"
+
+    echo "  * $CHR"
+    tabix -f -p vcf "$parent_vep"
+
+    csq_tsv="$PARENTS_OUT_DIR/${CHR}.csq.4key.tsv.gz"
+    bcftools query -f '%CHROM\t%POS\t%REF\t%ALT\t%INFO/CSQ\n' "$parent_vep" \
+        | bgzip > "$csq_tsv"
+    tabix -s1 -b2 -e2 "$csq_tsv"
+
+    bcftools annotate \
+        -a "$csq_tsv" \
+        -c "$FIELDS" \
+        -h "$csq_hdr" \
+        -r "$CHR_NC" \
+        -Oz -o "$out_chr" \
+        "$PARENTS_VCF"
+
+    tabix -f -p vcf "$out_chr"
+    outs+=("$out_chr")
+    tmpfiles+=("$csq_hdr" "$csq_tsv" "$csq_tsv.tbi")
+done
+
+echo "== Concatenate parents =="
+bcftools concat -Oz -o "$PARENTS_OUT_DIR/UCSF_parents_WGS_hg38.with_vep.vcf.gz" "${outs[@]}"
+tabix -f -p vcf "$PARENTS_OUT_DIR/UCSF_parents_WGS_hg38.with_vep.vcf.gz"
+echo "Done: $PARENTS_OUT_DIR/UCSF_parents_WGS_hg38.with_vep.vcf.gz"
 
 # Clean up temps
 rm -f "${tmpfiles[@]}"
