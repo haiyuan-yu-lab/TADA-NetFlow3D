@@ -1,0 +1,9 @@
+variable	value
+n_dn_case_noncoding	4770
+n_dn_control_noncoding	3123
+n_t_case_noncoding	4794
+n_t_control_noncoding	3101
+n_dn_case_coding	8028
+n_dn_control_coding	2460
+n_t_case_coding	8028
+n_t_control_coding	2460
