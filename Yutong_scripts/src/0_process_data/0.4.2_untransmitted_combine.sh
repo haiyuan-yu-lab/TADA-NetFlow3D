@@ -15,7 +15,7 @@ log(){ echo "[$(date '+%F %T')] $*" >&2; }
 
 # ---- CONFIG (edit these) ----
 ASD_DIR="/fs/cbsuhy01/storage/yz2676/projects/1-ASD/NetFlow_ASD/Yutong_scripts/data/asdinfo"
-OUT_PREFIX="$ASD_DIR/UCSF_parents_WGS_hg38.includesimplex"
+OUT_PREFIX="$ASD_DIR/UCSF_parents_WGS_hg38.includesimplex.codingonly"
 
 FINAL_PARENT_BCF="$OUT_PREFIX.filtered.vep.with_asdinfo.bcf"
 OUT_BODY_DIR="$ASD_DIR/untrans_bodies"

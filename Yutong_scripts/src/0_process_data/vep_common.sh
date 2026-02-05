@@ -33,9 +33,9 @@ make_unique_sites_vcf() {
 
   # Extract CHROM,POS,REF,ALT, deduplicate, rebuild minimal VCF header, bgzip + index
   bcftools view "${region_arg[@]}" "$in_vcf" \
-  | bcftools query -f '%CHROM\t%POS\t%REF\t%ALT\n' \
-  | LC_ALL=C sort -u -k1,1n -k2,2n -k3,3 -k4,4 \
-  | awk 'BEGIN{OFS="\t"}{print $1,$2,".",$3,$4,".",".","."}' \
+  | bcftools query -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\n' \
+  | LC_ALL=C sort -u -k1,1n -k2,2n -k3,3n -k4,4 -k5,5 \
+  | awk 'BEGIN{OFS="\t"}{print $1,$2,$3,$4,$5,".",".","."}' \
   | (echo '##fileformat=VCFv4.2'; echo -e '#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO'; cat) \
   | bgzip > "$out_sites"
 
@@ -118,4 +118,66 @@ annotate_full_vcf_as_sites() {
   local sites="$tmp/${base}.unique.sites.vcf.gz"
   make_unique_sites_vcf "$full_vcf" "$sites"
   run_vep_sites "$sites" "$out_vcf" "$fork" "$buf"
+}
+
+# Extract coding (LoF + missense) variants from a VEP-annotated VCF
+#   $1 = input VCF.gz (with VEP annotations)
+#   $2 = output VCF.gz (coding variants only)
+#   $3 = lof regex
+extract_coding_lof_missense() {
+    local in_with_vep="$1" out_coding="$2"
+    local lof_regex="$3"
+
+    bcftools +split-vep -c Consequence \
+        -i "(Consequence~\"${lof_regex}\") || (Consequence~\"missense_variant\")" \
+        -Ou "$in_with_vep" \
+  | bcftools annotate -x INFO/Consequence -Oz -o "$out_coding"
+
+    tabix -f -p vcf "$out_coding"
+}
+
+# Run VEP with MPC plugin (hg19)
+#   $1 = input VCF.gz (sites)
+#   $2 = output VCF.gz
+#   $3 = fork (threads)
+#   $4 = buffer_size
+run_vep_with_mpc_grch37() {
+    local in_vcf="$1" out_vcf="$2" fork="$3" buf="$4"
+    require_file "$in_vcf"
+    require_file "$MPC_TSV"
+  
+    vep -i "$in_vcf" \
+        --format vcf \
+        --offline --cache --dir "$CACHE_DIR" \
+        --assembly GRCh37 \
+        --vcf --force_overwrite --no_stats \
+        --compress_output bgzip \
+        --fork "$fork" --buffer_size "$buf" \
+        --plugin MPC,"$MPC_TSV" \
+        -o "$out_vcf" \
+        --fields "Consequence,MPC" \
+        --verbose
+}
+
+# VEP run (GRCh38) without extra info
+run_vep_grch38_added() {
+  local in_vcf="$1" out_vcf="$2" fork="$3" buf="$4"
+  require_file "$in_vcf"
+
+  vep -i "$in_vcf" \
+    --format vcf \
+    --offline --cache --dir "$CACHE_DIR" \
+    --assembly GRCh38 \
+    --vcf --force_overwrite --no_stats \
+    --compress_output bgzip \
+    --fork "$fork" --buffer_size "$buf" \
+    --sift b --polyphen b \
+    --af_gnomadg \
+    --plugin REVEL,file="$REVEL_TSV",no_match=1 \
+    --plugin CADD,snv="$CADD_SNV",indels="$CADD_INDEL" \
+    --custom file="$PHYLOP_BW",short_name=phyloP100way,format=bigwig,type=overlap,summary_stats=max \
+    --custom file="$PHCONS_BW",short_name=phastCons100way,format=bigwig,type=overlap,summary_stats=max \
+    --fields "$VEP_FIELDS,SYMBOL,Gene,HGVSc,HGVSp,Protein_position,Amino_acids,Codons" \
+    -o "$out_vcf" \
+    --verbose
 }

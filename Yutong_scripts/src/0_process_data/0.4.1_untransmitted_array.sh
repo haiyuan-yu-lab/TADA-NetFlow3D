@@ -14,19 +14,19 @@ set -euo pipefail
 
 log(){ echo "[$(date '+%F %T')] $*" >&2; }
 
-# ---- CONFIG (edit these) ----
+# ---- CONFIG ----
 ASD_DIR="/fs/cbsuhy01/storage/yz2676/projects/1-ASD/NetFlow_ASD/Yutong_scripts/data/asdinfo"
 CHUNK_DIR="$ASD_DIR/trio_chunks"
 
 # These should match what your main pipeline produced
-FINAL_PARENT_BCF="$ASD_DIR/UCSF_parents_WGS_hg38.includesimplex.filtered.vep.with_asdinfo.bcf"
-INH_FOR_UNTRANS_BCF="$ASD_DIR/All_inherited_WGS_hg38.includesimplex.filtered.vep.with_asdinfo.bcf"
+FINAL_PARENT_BCF="$ASD_DIR/UCSF_parents_WGS_hg38.includesimplex.codingonly.filtered.vep.with_asdinfo.bcf"
+INH_FOR_UNTRANS_BCF="$ASD_DIR/All_inherited_WGS_hg38.includesimplex.codingonly.filtered.vep.with_asdinfo.bcf"
 
 # TSV index paths created by build_sample_indexed_tsv()
-TX_TSV="$ASD_DIR/All_inherited_WGS_hg38.includesimplex.filtered.vep.with_asdinfo.by_child.tsv.gz"
-PR_TSV="$ASD_DIR/UCSF_parents_WGS_hg38.includesimplex.filtered.vep.with_asdinfo.by_parent.tsv.gz"
+TX_TSV="$ASD_DIR/All_inherited_WGS_hg38.includesimplex.codingonly.filtered.vep.with_asdinfo.by_child.tsv.gz"
+PR_TSV="$ASD_DIR/UCSF_parents_WGS_hg38.includesimplex.codingonly.filtered.vep.with_asdinfo.by_parent.tsv.gz"
 
-OUT_PREFIX="$ASD_DIR/UCSF_parents_WGS_hg38.includesimplex"
+OUT_PREFIX="$ASD_DIR/UCSF_parents_WGS_hg38.includesimplex.codingonly"
 OUT_BODY_DIR="$ASD_DIR/untrans_bodies"
 mkdir -p "$OUT_BODY_DIR"
 # -----------------------------

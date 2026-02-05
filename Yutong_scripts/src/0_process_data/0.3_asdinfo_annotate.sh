@@ -9,7 +9,7 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=128G
-#SBATCH --time=480:00:00
+#SBATCH --time=48:00:00
 #SBATCH --nodelist=cbsuhy02
 
 
@@ -32,7 +32,10 @@
 # 4) For parent variants with untransmitted annotation:
 # sbatch src/0_process_data/0.3_asdinfo_annotate.sh --type parent --make-untransmitted yes --exclude-multiplex no --keep-only-multiplex yes --out-prefix UCSF_parents_WGS_hg38.onlymultiplex
 # sbatch src/0_process_data/0.3_asdinfo_annotate.sh --type parent --make-untransmitted yes --exclude-multiplex no --inh-for-untrans All_inherited_WGS_hg38.includesimplex --out-prefix UCSF_parents_WGS_hg38.includesimplex
-
+# 5) extract coding variants only (LOF + missense):
+# sbatch src/0_process_data/0.3_asdinfo_annotate.sh --type dnm --dnv-vep dnm/UCSF_20211001_dnms_WGS_hg38.coding.with_mpcmax.vcf.gz --exclude-coding no --keep-only-coding yes --out-prefix UCSF_20211001_dnms_WGS_hg38.codingonly
+# sbatch src/0_process_data/0.3_asdinfo_annotate.sh --type inh --inh-vep inh/All_inherited_WGS_hg38.coding.with_mpcmax.vcf.gz --exclude-multiplex no --keep-only-multiplex yes --exclude-coding no --keep-only-coding yes --out-prefix All_inherited_WGS_hg38.codingonly
+# sbatch src/0_process_data/0.3_asdinfo_annotate.sh --type parent --parent-vep parents/UCSF_parents_WGS_hg38.coding.with_mpcmax.vcf.gz --make-untransmitted yes --exclude-multiplex no --keep-only-multiplex yes --inh-for-untrans All_inherited_WGS_hg38.codingonly --exclude-coding no --keep-only-coding yes --out-prefix UCSF_parents_WGS_hg38.onlymultiplex.codingonly
 
 set -eo pipefail
 # -----------------------------
@@ -68,7 +71,8 @@ EXCLUDE_MULTIPLEX="yes"     # yes|no
 EXCLUDE_CONCERNING="yes"    # yes|no
 EXCLUDE_CODING="yes"        # yes|no  (drop LOF + missense with REVEL>thres)
 KEEP_ONLY_MULTIPLEX="no"    # yes|no
-MAKE_UNTRANSMITTED="no"    # yes|no
+MAKE_UNTRANSMITTED="no"     # yes|no
+KEEP_ONLY_CODING="no"       # yes|no  (keep only LOF + missense)
 
 # -----------------------------
 # Parse args
@@ -94,6 +98,7 @@ while [[ $# -gt 0 ]]; do
     --keep-only-multiplex) KEEP_ONLY_MULTIPLEX="$2"; shift 2;;
     --make-untransmitted)  MAKE_UNTRANSMITTED="$2"; shift 2;;
     --inh-for-untrans)    INH_FOR_UNTRANS_REL="$2"; shift 2;;
+    --keep-only-coding)   KEEP_ONLY_CODING="$2"; shift 2;;
     --revel)              REVEL_THRESH="$2"; shift 2;;
     --help|-h)            SHOW_HELP=1; shift;;
     --)                   shift; break;;
@@ -409,11 +414,16 @@ fi
 
 log "[INFO] TYPE=$TYPE | IN_VCF=$IN_VCF"
 log "[INFO] OUT_PREFIX=$OUT_PREFIX"
-log "[INFO] TOGGLES: exclude_multiplex=$EXCLUDE_MULTIPLEX, exclude_concerning=$EXCLUDE_CONCERNING, exclude_coding=$EXCLUDE_CODING, keep_only_multiplex=$KEEP_ONLY_MULTIPLEX, make_untransmitted=$MAKE_UNTRANSMITTED"
+log "[INFO] TOGGLES: exclude_multiplex=$EXCLUDE_MULTIPLEX, exclude_concerning=$EXCLUDE_CONCERNING, exclude_coding=$EXCLUDE_CODING, keep_only_coding=$KEEP_ONLY_CODING, keep_only_multiplex=$KEEP_ONLY_MULTIPLEX, make_untransmitted=$MAKE_UNTRANSMITTED"
 log "[INFO] THREADS=$THREADS"
 
 KEEP_SAMPLE_LIST=""   # allowlist (optional)
 DROP_SAMPLE_LIST=""   # denylist (optional)
+
+if [[ "$EXCLUDE_CODING" == "yes" && "$KEEP_ONLY_CODING" == "yes" ]]; then
+  log "ERROR: --exclude-coding yes and --keep-only-coding yes are mutually exclusive"
+  exit 1
+fi
 
 # Build lists only if that exclusion is ON and no custom list provided (or default path used)
 if [[ "$EXCLUDE_MULTIPLEX" == "yes" && "$KEEP_ONLY_MULTIPLEX" == "yes" ]]; then
@@ -523,29 +533,43 @@ log "Applying selected exclusions -> $FILTERED_BCF"
 bcftools index -f "$FILTERED_BCF"
 
 # =============================
-# Step 2: Optional coding exclusion (LOF + high-REVEL missense)
+# Step 2: Coding filtering
+#   - EXCLUDE_CODING=yes => drop LOF + missense(REVEL>=thres)
+#   - KEEP_ONLY_CODING=yes => keep only LOF + missense
+#   - if both are no, pass-through
 # =============================  
-NONCODING_BCF="$OUT_PREFIX.filtered.vep.bcf"
-if [[ "$EXCLUDE_CODING" == "yes" ]]; then
-  log "Excluding LOF & missense(REVEL>=$REVEL_THRESH) -> $NONCODING_BCF"
+POSTCODING_BCF="$OUT_PREFIX.filtered.postcoding.vep.bcf"
+
+if [[ "$KEEP_ONLY_CODING" == "yes" ]]; then
+  log "Keeping only coding variants; LOF & missense -> $POSTCODING_BCF"
+  bcftools +split-vep \
+    -c Consequence \
+    -i "(Consequence~\"$LOF_REGEX\") || (Consequence~\"$MISSENSE_TERM\")" \
+    -Ou "$FILTERED_BCF" \
+  | bcftools annotate -x 'INFO/Consequence' -Ob -o "$POSTCODING_BCF"
+
+elif [[ "$EXCLUDE_CODING" == "yes" ]]; then
+  log "Excluding LOF & missense(REVEL>=$REVEL_THRESH) -> $POSTCODING_BCF"
   bcftools +split-vep \
     -c Consequence,REVEL:Float \
     -e "(Consequence~\"$LOF_REGEX\") || (Consequence~\"$MISSENSE_TERM\" && REVEL>=$REVEL_THRESH)" \
     -Ou "$FILTERED_BCF" \
     | bcftools annotate -x 'INFO/Consequence,INFO/REVEL' \
-      -Ob -o "$NONCODING_BCF"
+      -Ob -o "$POSTCODING_BCF"
+
 else
-  log "Skipping coding exclusion; pass-through -> $NONCODING_BCF"
-  bcftools view -Ob -o "$NONCODING_BCF" "$FILTERED_BCF"
+  log "Skipping coding filtering; pass-through -> $POSTCODING_BCF"
+  bcftools view -Ob -o "$POSTCODING_BCF" "$FILTERED_BCF"
 fi
-bcftools index -f "$NONCODING_BCF"
+
+bcftools index -f "$POSTCODING_BCF"
 
 # =============================
 # Step 3: Counts
 # =============================
 N_IN=$(bcftools view -H "$IN_VCF" | wc -l || echo 0)
 N_AFTER_FS=$(bcftools view -H "$FILTERED_BCF" | wc -l || echo 0)
-N_AFTER_CODE=$(bcftools view -H "$NONCODING_BCF" | wc -l || echo 0)
+N_AFTER_CODE=$(bcftools view -H "$POSTCODING_BCF" | wc -l || echo 0)
 log "[INFO] Counts | Input=$N_IN | After FAM/SAMPLE=$N_AFTER_FS | After coding exclusion=$N_AFTER_CODE"
 
 # =============================
@@ -559,16 +583,16 @@ if [[ "$TYPE" == "inh" ]]; then
   require_file "$SEX_MAP"
   require_file "$PHENO_MAP"
   {
-    bcftools view -h "$NONCODING_BCF" | add_or_keep_sex_pheno_headers
-    bcftools view -H "$NONCODING_BCF" | annotate_sex_pheno_stream "$SAMPLE_TAG" "$SEX_MAP" "$PHENO_MAP"
+    bcftools view -h "$POSTCODING_BCF" | add_or_keep_sex_pheno_headers
+    bcftools view -H "$POSTCODING_BCF" | annotate_sex_pheno_stream "$SAMPLE_TAG" "$SEX_MAP" "$PHENO_MAP"
   } | bcftools view --threads "$THREADS" -Ob -o "$FINAL_BCF" -
 else
   log "Annotating SEX only -> $FINAL_BCF"
   if [[ ! -s "$SEX_MAP" ]]; then build_sex_map; fi
   require_file "$SEX_MAP"
   {
-    bcftools view -h "$NONCODING_BCF" | add_or_keep_sex_pheno_headers
-    bcftools view -H "$NONCODING_BCF" | annotate_sex_pheno_stream "$SAMPLE_TAG" "$SEX_MAP" ""   # empty PHENO map
+    bcftools view -h "$POSTCODING_BCF" | add_or_keep_sex_pheno_headers
+    bcftools view -H "$POSTCODING_BCF" | annotate_sex_pheno_stream "$SAMPLE_TAG" "$SEX_MAP" ""   # empty PHENO map
   } | bcftools view --threads "$THREADS" -Ob -o "$FINAL_BCF" -
 
 fi
@@ -587,16 +611,6 @@ if [[ "$MAKE_UNTRANSMITTED" == "yes" && "$TYPE" == "parent" ]]; then
   log "Emitting untransmitted parent variants -> $OUT_PREFIX.untransmitted.bcf"
   TRIO_TABLE="$ASD_DIR/trio_table.txt"
   build_trio_table "$TRIO_TABLE"
-  
-  if [[ "$KEEP_ONLY_MULTIPLEX" == "no" ]]; then
-    log "Processing all trios for untransmitted variants, use parallelization."; 
-    NCHUNKS=25
-    CHUNK_DIR="$ASD_DIR/trio_chunks"
-    mkdir -p "$CHUNK_DIR"
-
-    split -n l/$NCHUNKS -d -a 4 "$TRIO_TABLE" "$CHUNK_DIR/trios."
-    exit 1
-  fi
 
   UNTRANSMITTED_BCF="$OUT_PREFIX.untransmitted.bcf"
   INH_FOR_UNTRANS_BCF="$ASD_DIR/$INH_FOR_UNTRANS_REL.filtered.vep.with_asdinfo.bcf"
@@ -613,6 +627,16 @@ if [[ "$MAKE_UNTRANSMITTED" == "yes" && "$TYPE" == "parent" ]]; then
   build_sample_indexed_tsv "$INH_FOR_UNTRANS_BCF" "$TX_TSV" "$SAMPLE_TAG"
   build_sample_indexed_tsv "$FINAL_BCF" "$PR_TSV" "$SAMPLE_TAG"
 
+  if [[ "$KEEP_ONLY_MULTIPLEX" == "no" ]]; then
+    log "Processing all trios for untransmitted variants, use parallelization."; 
+    NCHUNKS=25
+    CHUNK_DIR="$ASD_DIR/trio_chunks"
+    mkdir -p "$CHUNK_DIR"
+
+    split -n l/$NCHUNKS -d -a 4 "$TRIO_TABLE" "$CHUNK_DIR/trios."
+    exit 0
+  fi
+  
   # Generate VCF body with python (no header)
   BODY_TXT="$OUT_PREFIX.untransmitted.body.vcf"
   python3 src/0_process_data/make_untransmitted.py \
@@ -665,7 +689,7 @@ fi
 log "Cleaning up temporary files"
 rm -f "$tmp_kept_vcf" "$tmp_kept_vcf.tbi"
 rm -f "$FILTERED_BCF" "$FILTERED_BCF".csi
-rm -f "$NONCODING_BCF" "$NONCODING_BCF".csi
+rm -f "$POSTCODING_BCF" "$POSTCODING_BCF".csi
 rm -f "$CACHE" "$CACHE".tbi
 rm -f "$BODY_TXT"
 log "All done."
