@@ -7,9 +7,9 @@
 
 #SBATCH -N 1
 #SBATCH --ntasks-per-node=1
-#SBATCH --cpus-per-task=1
-#SBATCH --mem=128G
-#SBATCH --time=48:00:00
+#SBATCH --cpus-per-task=8
+#SBATCH --mem=24G
+#SBATCH --time=64:00:00
 #SBATCH --nodelist=cbsuhy02
 
 source src/0_process_data/vep.env
@@ -25,8 +25,6 @@ TYPE="dnm"  # dnm | inh | parent
 dnm_with_vep="$DNM_OUT_DIR/UCSF_20211001_dnms_WGS_hg38.with_vep.vcf.gz"
 inherited_with_vep="$INH_OUT_DIR/All_inherited_WGS_hg38.with_vep.vcf.gz"
 parent_with_vep="$PARENTS_OUT_DIR/UCSF_parents_WGS_hg38.with_vep.vcf.gz"
-
-LOF_REGEX="frameshift_variant\|splice_acceptor_variant\|splice_donor_variant\|stop_gained\|stop_lost\|start_lost\|inframe_deletion\|inframe_insertion\|protein_altering_variant"
 
 # -----------------------------
 # Inputs per TYPE
@@ -116,14 +114,14 @@ chrY	Y
 EOF
 
 # -----------------------------
-# Step 1) Extract hg38 coding LOF+missense from VEP-annotated VCF
+# Step 1) Extract hg38 coding (BIOTYPE=protein_coding) from VEP-annotated VCF
 #         (and ensure ID = CHROM:POS:REF:ALT for join key)
 # -----------------------------
 coding_hg38="${out_prefix}.extracted.id.vcf.gz"
-log "Extracting coding LOF+missense and setting ID: $coding_hg38"
+log "Extracting coding and setting ID: $coding_hg38"
 
 tmp_extract="$workdir/coding.extracted.vcf.gz"
-extract_coding_lof_missense "$in_vcf" "$tmp_extract" "$LOF_REGEX"
+extract_coding "$in_vcf" "$tmp_extract"
 
 bcftools annotate --set-id '%CHROM:%POS:%REF:%ALT' \
   -Oz -o "$coding_hg38" "$tmp_extract"
@@ -203,7 +201,7 @@ log "mpc_byid lines: $(zcat "$mpc_byid" | wc -l)"
 # -----------------------------
 coding_hg38_vep="$workdir/hg38.coding.vep_addedinfo.vcf.gz"
 log "Adding VEP INFO fields back to hg38 coding VCF for easier join"
-run_vep_grch38_added "$coding_hg38" "$coding_hg38_vep" 4 20000
+run_vep_grch38_added "$coding_hg38" "$coding_hg38_vep" 8 80000
 tabix -f -p vcf "$coding_hg38_vep"
 
 mpc_annot_hg38="$workdir/hg38.mpc_annot.tsv.gz"
@@ -216,7 +214,7 @@ LC_ALL=C join -a1 -e '.' -t $'\t' -1 5 -2 1 \
     | LC_ALL=C sort -t$'\t' -k5,5) \
   <(zcat "$mpc_byid" | tr -d '\r' | LC_ALL=C sort -t$'\t' -k1,1) \
 | awk -v OFS="\t" '{print $2,$3,$4,$5,$6}' \
-| LC_ALL=C sort -t$'\t' -k1,1n -k2,2n \
+| LC_ALL=C sort -t$'\t' -k1,1V -k2,2n \
 | bgzip -c > "$mpc_annot_hg38"
 
 tabix -f -s 1 -b 2 -e 2 "$mpc_annot_hg38"
@@ -245,3 +243,6 @@ tabix -f -p vcf "$out_vcf"
 log "Coding variants (hg38 extracted): $(bcftools view -H "$coding_hg38_vep" | wc -l)"
 log "With MPC annotated (MPC != .): $(bcftools view -H -i 'INFO/MPC!="."' "$out_vcf" | wc -l)"
 log "Done: $out_vcf"
+
+# clean
+rm -rf "$workdir"

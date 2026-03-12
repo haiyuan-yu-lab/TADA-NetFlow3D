@@ -34,7 +34,7 @@ make_unique_sites_vcf() {
   # Extract CHROM,POS,REF,ALT, deduplicate, rebuild minimal VCF header, bgzip + index
   bcftools view "${region_arg[@]}" "$in_vcf" \
   | bcftools query -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\n' \
-  | LC_ALL=C sort -u -k1,1n -k2,2n -k3,3n -k4,4 -k5,5 \
+  | LC_ALL=C sort -u -k1,1V -k2,2n -k3,3n -k4,4 -k5,5 \
   | awk 'BEGIN{OFS="\t"}{print $1,$2,$3,$4,$5,".",".","."}' \
   | (echo '##fileformat=VCFv4.2'; echo -e '#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO'; cat) \
   | bgzip > "$out_sites"
@@ -136,6 +136,20 @@ extract_coding_lof_missense() {
     tabix -f -p vcf "$out_coding"
 }
 
+# Extract coding (BIOTYPE=protein_coding) variants from a VEP-annotated VCF
+#   $1 = input VCF.gz (with VEP annotations)
+#   $2 = output VCF.gz (coding variants only)
+extract_coding() {
+    local in_with_vep="$1" out_coding="$2"
+
+    bcftools +split-vep -c BIOTYPE \
+        -i "BIOTYPE=\"protein_coding\"" \
+        -Ou "$in_with_vep" \
+  | bcftools annotate -x INFO/BIOTYPE -Oz -o "$out_coding"
+
+    tabix -f -p vcf "$out_coding"
+}
+
 # Run VEP with MPC plugin (hg19)
 #   $1 = input VCF.gz (sites)
 #   $2 = output VCF.gz
@@ -177,7 +191,7 @@ run_vep_grch38_added() {
     --plugin CADD,snv="$CADD_SNV",indels="$CADD_INDEL" \
     --custom file="$PHYLOP_BW",short_name=phyloP100way,format=bigwig,type=overlap,summary_stats=max \
     --custom file="$PHCONS_BW",short_name=phastCons100way,format=bigwig,type=overlap,summary_stats=max \
-    --fields "$VEP_FIELDS,SYMBOL,Gene,HGVSc,HGVSp,Protein_position,Amino_acids,Codons" \
+    --fields "$VEP_FIELDS,SYMBOL,HGVSc,HGVSp,Protein_position,Amino_acids,Codons" \
     -o "$out_vcf" \
     --verbose
 }

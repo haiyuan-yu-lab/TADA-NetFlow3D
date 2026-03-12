@@ -89,6 +89,8 @@ csq_hdr="$PARENTS_OUT_DIR/csq.hdr"
 bcftools view -h "$PARENTS_OUT_DIR/UCSF_parents_WGS_hg38.${CHROMS[0]}.vep.vcf.gz" \
 | grep '^##INFO=<ID=CSQ' > "$csq_hdr"
 for CHR in "${CHROMS[@]}"; do
+    # no chrX/Y for parents
+    [[ $CHR == "chrX" || $CHR == "chrY" ]] && continue
     parent_vep="$PARENTS_OUT_DIR/UCSF_parents_WGS_hg38.${CHR}.vep.vcf.gz"
     out_chr="$PARENTS_OUT_DIR/UCSF_parents_WGS_hg38.${CHR}.with_vep.vcf.gz"
     CHR_NC="${CHR//chr/}"

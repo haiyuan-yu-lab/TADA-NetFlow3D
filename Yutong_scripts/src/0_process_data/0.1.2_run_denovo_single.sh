@@ -1,4 +1,15 @@
 #!/bin/bash
+#SBATCH --job-name=vep_denovo
+#SBATCH -o logs/vep_denovo.%A.out
+#SBATCH -e logs/vep_denovo.%A.err
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=yz2676@cornell.edu
+
+#SBATCH -N 1
+#SBATCH --cpus-per-task=4
+#SBATCH --mem=64G
+#SBATCH --time=24:00:00
+#SBATCH --nodelist=cbsuhy02
 
 # For a small de novo file, a single pass is simpler and avoids array overhead.
 # We still dedup → unique sites to drastically shrink the VEP work.
