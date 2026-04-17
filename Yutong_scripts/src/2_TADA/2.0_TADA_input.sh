@@ -12,6 +12,12 @@
 #SBATCH --nodelist=cbsuhy02
 
 COHORT="InhAll_DNVAll" # InhMult_DNVSimp / InhAll_DNVAll
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --cohort)               COHORT="$2"; shift 2;;
+    *) echo "Unknown arg: $1" >&2; exit 1;;
+  esac
+done
 
 var_prefilter_dir="/fs/cbsuhy01/storage/yz2676/projects/1-ASD/NetFlow_ASD/Yutong_scripts/data/asdinfo"
 outbase=/fs/cbsuhy02/storage/yz2676/ASD/NetFlow_ASD/Yutong_scripts/data/TADA
@@ -120,8 +126,11 @@ rare_damaging_control=$(bcftools view -H "$outdir/dnv/ctrl.vcf.gz" | wc -l)
 dnv_var_count=$(bcftools view -H "$dnv_vcf" | wc -l)
 rare_damaging_rate=$(awk -v num=$((rare_damaging_case + rare_damaging_control)) -v den="$dnv_var_count" \
   'BEGIN{ if(den==0) {print "nan"} else {printf "%.6f", num/den} }')
+# dnv_var_count=$(bcftools view -i 'INFO/STATUS="control"' -H "$dnv_vcf" | wc -l)
+# rare_damaging_rate=$(awk -v num="$rare_damaging_control" -v den="$dnv_var_count" \
+#   'BEGIN{ if(den==0) {print "nan"} else {printf "%.6f", num/den} }')
 
-echo "Rare damaging variant rate in DNV data: $rare_damaging_rate per generation"
+echo "Rare damaging variant rate in DNV control: $rare_damaging_rate"
 # providing mut rate files (Samocha et al. baseline rates)
 # python src/2_TADA/generate_TADA_input.py \
 #     --outdir "$outdir" \
