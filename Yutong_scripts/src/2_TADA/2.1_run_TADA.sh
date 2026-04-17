@@ -11,16 +11,16 @@
 #SBATCH --time=48:00:00
 #SBATCH --nodelist=cbsuhy02
 
-MODE="coding"          # coding | coding+noncoding
+MODE="coding+noncoding"          # coding | coding+noncoding
 VAR_SIGNAL="both"       # dn | in | both
 
 # ---- decide analysis flags + naming from MODE/VAR_SIGNAL ----
 base_dir=/fs/cbsuhy02/storage/yz2676/ASD/NetFlow_ASD
 TADA_dir=${base_dir}/Yutong_scripts/data/TADA
-samples=("InhAll_DNVAll") #"InhMult_DNVSimp" 
+samples=("InhAll_DNVAll") # InhMult_DNVSimp
 enhancer_set=("Deconv Excitatory Neurons" "Deconv Astrocytes" "Deconv Microglia" "Combined" "Combined Simple")
 
-coding="FuRaw"
+coding="FuScaled" # FuScaled / FuRaw
 mut="Roulette_MR"
 
 coding_file=${base_dir}/TADA_input_coding_${coding}.txt
@@ -28,6 +28,15 @@ prior_file=${base_dir}/prior.txt
 info_file=${base_dir}/info.txt
 
 r_flags=( --dn_coding --in_coding )      # always do coding here
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --mode)               MODE="$2"; shift 2;;
+    --coding)             coding="$2"; shift 2;;
+    --mut)                mut="$2"; shift 2;;
+    *) echo "Unknown arg: $1" >&2; exit 1;;
+  esac
+done
 
 if [[ "$MODE" == "coding+noncoding" ]]; then
     case "$VAR_SIGNAL" in
@@ -86,12 +95,12 @@ for sample in "${samples[@]}"; do
             "${r_flags[@]}" \
             "${noncoding_args[@]}"
         
-        fdr_threshold=0.05
-        filtered_output=${output_prefix}_filtered_f${fdr_threshold}.txt
-        awk -F "\t" -v fdr_th=${fdr_threshold} '
-        NR==1 {for(i=1;i<=NF;i++) if($i=="fdr") fdr_col=i; print; next}
-        fdr_col && $fdr_col+0 < fdr_th {print}
-        ' "${output_prefix}.txt" > "${filtered_output}"
-        echo "Filtered results saved to ${filtered_output}"
+        # fdr_threshold=0.05
+        # filtered_output=${output_prefix}_filtered_f${fdr_threshold}.txt
+        # awk -F "\t" -v fdr_th=${fdr_threshold} '
+        # NR==1 {for(i=1;i<=NF;i++) if($i=="fdr") fdr_col=i; print; next}
+        # fdr_col && $fdr_col+0 < fdr_th {print}
+        # ' "${output_prefix}.txt" > "${filtered_output}"
+        # echo "Filtered results saved to ${filtered_output}"
     done
 done

@@ -123,7 +123,8 @@ for (var_type in c("ptv", "misb", "misa")) {
       n_case = n_t_case_coding,
       n_con = n_t_case_coding,
       mut = coding[[paste0("mut.", var_type)]],
-      gamma.cc = coding[[paste0("prior.in.", var_type)]]
+      gamma.cc = coding[[paste0("prior.in.", var_type)]],
+      floor = TRUE
     )
   }
 }
@@ -135,7 +136,14 @@ if (!is.null(noncoding_file)) {
   ## de novo
   if(dn_em) {
     message("dn.em analysis is enabled.")
-    noncoding$bf.dn.em <- BF_DN(count_case=noncoding$dn.em, count_con=noncoding$dn.em.sib, n_case=n_dn_case_noncoding, n_con=n_dn_control_noncoding, mut=noncoding[[mut_col]], gamma.dn=rep(gamma.dn.em, times = nrow(noncoding)), beta.dn=beta.dn)
+    noncoding$bf.dn.em <- BF_DN(
+        count_case=noncoding$dn.em, 
+        count_con=noncoding$dn.em.sib, 
+        n_case=n_dn_case_noncoding, 
+        n_con=n_dn_control_noncoding, 
+        mut=noncoding[[mut_col]], 
+        gamma.dn=rep(gamma.dn.em, times = nrow(noncoding)), 
+        beta.dn=beta.dn)
     lBF <- do.call(rbind, lapply(1:nrow(noncoding), function(i) split_weight(log(noncoding$bf.dn.em[i]), noncoding$gene_id[i], info)))
     lBF <- na.omit(lBF)
     BF <- exp(by(lBF$lBF, lBF$gene, sum))
@@ -147,11 +155,20 @@ if (!is.null(noncoding_file)) {
   ## inherited
   if (in_em){
     message("in.em analysis is enabled.")
-    noncoding$bf.in.em <- BF_CC(count_case=noncoding$in.t.em, count_con=noncoding$in.u.em, n_case=n_t_case_noncoding, n_con=n_t_case_noncoding, mut=noncoding[[mut_col]], gamma.cc=rep(gamma.in.em, times = nrow(noncoding)))
+    noncoding$bf.in.em <- BF_CC(
+        count_case=noncoding$in.t.em, 
+        count_con=noncoding$in.u.em, 
+        n_case=n_t_case_noncoding, 
+        n_con=n_t_case_noncoding, 
+        mut=noncoding[[mut_col]], 
+        gamma.cc=rep(gamma.in.em, times = nrow(noncoding)),
+        floor=FALSE
+    )
     lBF <- do.call(rbind, lapply(1:nrow(noncoding), function(i) split_weight(log(noncoding$bf.in.em[i]), noncoding$gene_id[i], info)))
     lBF <- na.omit(lBF)
     BF <- exp(by(lBF$lBF, lBF$gene, sum))
     df_output <- data.frame(gene_id = names(BF), bf.in.em = as.vector(BF))
+    df_output$bf.in.em = pmax(df_output$bf.in.em, 1) # floor BF at 1
     coding <- merge(coding, df_output, by = "gene_id", all.x = TRUE)
     coding$bf.in.em[is.na(coding$bf.in.em)] <- 1
   }
