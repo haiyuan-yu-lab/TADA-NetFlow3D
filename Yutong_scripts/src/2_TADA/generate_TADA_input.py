@@ -1,10 +1,13 @@
 import os
 import sys
+import pysam
 import argparse
+import subprocess
 import logging
 import pybedtools
 
 import pandas as pd
+from collections import defaultdict
 sys.path.append(os.path.abspath("src/1_enrichment"))
 from variants import VCFHandler, VCFBEDOverlapper
 from utils import load_enhancer_dict, build_filters
@@ -36,7 +39,21 @@ def parse_arguments():
     p_build.add_argument("--cadd-min", type=int, default=None, help="Minimum CADD_PHRED for SNVs. If omitted, CADD filter is skipped.")
     p_build.add_argument("--phylop-min", type=int, default=None, help="Minimum phyloP100way for INDELs. If omitted, phyloP filter is skipped.")
     p_build.add_argument("--phastcons-min", type=float, default=None, help="Minimum phastCons100way for INDELs. If omitted, phastCons filter is skipped.")
-    
+
+    # ----- build coding mode ------
+    p_build_coding = subparsers.add_parser("build-coding",
+        help="Build DN-only, INH-only, and UNTRANS-only intermediate tables from raw coding variant sources."
+    )
+
+    p_build_coding.add_argument("--vcf", type=str, required=True, help="Path to the input variant file (VCF format).")
+    p_build_coding.add_argument("--type", type=str, choices=["dnv", "inh", "untrans"], required=True, help="Type of variants to process: 'dnv', 'inh', or 'untrans'.")
+    p_build_coding.add_argument("--sex", type=str, choices=["male", "female", "any"], default="any", help="Sex of samples to consider.")
+    p_build_coding.add_argument("--gnomad-null-only", action="store_true", help="If set, require gnomADg_AF == '.'")
+    p_build_coding.add_argument("--lof-regex", type=str, default=None, 
+                                help="Regex pattern to identify LoF variants based on VEP annotations.")
+    p_build_coding.add_argument("--misb", action="store_true", help="If set, include misB variants with MPC >= 2.")
+    p_build_coding.add_argument("--misa", action="store_true", help="If set, include misA variants with MPC >= 1 and MPC < 2.")
+
     # ----- merge mode ------
     p_merge = subparsers.add_parser("merge",
         help="Merge De novo, Inherited, and Untransmitted TADA input files into a combined file."
@@ -44,6 +61,12 @@ def parse_arguments():
 
     p_merge.add_argument("--mut-rate-file", type=str, default=None, help="Path to the mutation rate file.")
     
+    # ----- merge coding mode ------
+    p_merge_coding = subparsers.add_parser("merge-coding",
+        help="Merge De novo, Inherited, and Untransmitted coding TADA input files into a combined file."
+    )
+    p_merge_coding.add_argument("--gencode-file", type=str, required=True, help="Path to the Gencode gene annotation bed file.")
+    p_merge_coding.add_argument("--constraint-file", type=str, required=True, help="Path to the gene constraint metrics file.")
     return parser.parse_args()
 
 def enhancer_linked_genes(outdir: str, config: dict, tss_ref: str):
@@ -138,6 +161,50 @@ def generate_TADA_input(var_type, config, outdir):
             os.path.join(outdir, name, f"{var_type}.txt"), sep="\t", index=False, header=True
         )
 
+def count_var_per_gene(vcf_path: str, gene_idx: int, outdir: str, tag: str, col_tag: str):
+    """
+    Count variants per gene from a VCF file.
+    """
+    csq_temp_path = os.path.join(outdir, "csq_temp.txt")
+    subprocess.run(
+        f"bcftools query -f '%INFO/CSQ\\n' {vcf_path} > {csq_temp_path}",
+        shell=True, check=True
+    )
+
+    LOF_TERMS = {
+        "frameshift_variant",
+        "splice_acceptor_variant",
+        "splice_donor_variant",
+        "stop_gained",
+        "stop_lost",
+        "start_lost",
+        "inframe_deletion",
+        "inframe_insertion",
+        "protein_altering_variant",
+    }
+    filters = LOF_TERMS if tag == "ptv" else {"missense_variant"}
+
+    counts = defaultdict(int)
+    with open(csq_temp_path, 'r') as f:
+        for csq in f:
+            annotations = csq.strip().split(',')
+            genes = set()
+            for annotation in annotations:
+                fields = annotation.split('|')
+                gene_id = fields[gene_idx]
+                conseq_terms = set(fields[1].split('&'))
+                if not conseq_terms.intersection(filters):
+                    continue
+                if gene_id:
+                    genes.add(gene_id)
+            for gene in genes:
+                counts[gene] += 1
+    counts_df = pd.DataFrame.from_dict(counts, orient='index', columns=[col_tag]).reset_index()
+    counts_df = counts_df.rename(columns={'index': 'gene_id'})
+    out_prefix = "case" if "sib" not in col_tag else "control"
+    counts_df.to_csv(os.path.join(outdir, f"{out_prefix}.txt"), sep="\t", index=False, header=True)
+    os.remove(csq_temp_path)
+
 def run_build(args):
     logging.info("Running in build mode.")
     outdir = f"{args.outdir}/{args.type}"
@@ -200,6 +267,54 @@ def run_build(args):
     )
     logging.info("Generated counts for %s.", args.type)
 
+def run_build_coding(args):
+    logging.info("Running in build-coding mode.")
+    if args.lof_regex is not None:
+        tag = "ptv"
+    elif args.misb:
+        tag = "misb"
+    elif args.misa:
+        tag = "misa"
+    else:
+        raise ValueError("At least one of --lof-regex, --misb, or --misa must be specified.")
+    outdir = f"{args.outdir}/{args.type}/{tag}"
+    os.makedirs(outdir, exist_ok=True)
+    
+    vcf_handler = VCFHandler()
+    vcf_handler.set_vcf(args.vcf)
+    case_vcf_path = os.path.join(outdir, "case.vcf.gz")
+    ctrl_vcf_path = os.path.join(outdir, "ctrl.vcf.gz")
+    base_inc_case, any_inc_case = build_filters(
+        sex=args.sex, status="case", 
+        gnomad_null_only=args.gnomad_null_only,
+        lof_regex=args.lof_regex,
+        mpcb=args.misb,
+        mpca=args.misa
+    )
+    base_inc_ctrl, any_inc_ctrl = build_filters(
+        sex=args.sex, status="control", 
+        gnomad_null_only=args.gnomad_null_only,
+        lof_regex=args.lof_regex,
+        mpcb=args.misb,
+        mpca=args.misa
+    )
+
+    logging.info("Filtering case coding variants - Base include: %s, " \
+                 "Include any groups: %s", base_inc_case, any_inc_case)
+    vcf_handler.pass_filters(output_path=case_vcf_path, vcf_path=args.vcf, include=base_inc_case,
+        include_any=any_inc_case, threads=4, bgzip_index=True)
+    logging.info("Filtering control coding variants - Base include: %s, " \
+                 "Include any groups: %s", base_inc_ctrl, any_inc_ctrl)
+    vcf_handler.pass_filters(output_path=ctrl_vcf_path, vcf_path=args.vcf, include=base_inc_ctrl,
+        include_any=any_inc_ctrl, threads=4, bgzip_index=True)
+
+    # Count variants per gene
+    desc = pysam.VariantFile(args.vcf).header.info.get("CSQ").description
+    gene_idx = desc.split("Format: ")[1].split("|").index("Gene")
+    cohort = "in.u" if args.type == "untrans" else "in.t" if args.type == "inh" else "dn"
+    count_var_per_gene(case_vcf_path, gene_idx, outdir, tag, f"{cohort}.{tag}")
+    count_var_per_gene(ctrl_vcf_path, gene_idx, outdir, tag, f"{cohort}.{tag}.sib")
+
 def run_merge(args):
     logging.info("Running in merge mode.")
     config = load_enhancer_dict(args.config)
@@ -259,14 +374,78 @@ def run_merge(args):
         output_df.to_csv(merged_input_path, sep="\t", index=False, header=True)
         logging.info("Merged TADA input for enhancer set: %s", name)
 
+def run_merge_coding(args):
+    logging.info("Running in merge-coding mode.")
+    dnv_root = os.path.join(args.outdir, "dnv")
+    inh_root = os.path.join(args.outdir, "inh")
+    untrans_root = os.path.join(args.outdir, "untrans")
+    merged_outdir = os.path.join(args.outdir, "input_coding")
+    os.makedirs(merged_outdir, exist_ok=True)
+
+    output_df = None
+    for tag in ["ptv", "misb", "misa"]:
+        print(f"Merging coding TADA input for variant type: {tag}")
+        dnv_case_path = os.path.join(dnv_root, tag, f"case.txt")
+        dnv_control_path = os.path.join(dnv_root, tag, f"control.txt")
+        inh_case_path = os.path.join(inh_root, tag, f"case.txt")
+        unt_case_path = os.path.join(untrans_root, tag, f"case.txt")
+
+        dnv_df = pd.read_csv(dnv_case_path, sep="\t", header=0)
+        dnv_ctrl_df = pd.read_csv(dnv_control_path, sep="\t", header=0)
+        inh_df = pd.read_csv(inh_case_path, sep="\t", header=0)
+        unt_df = pd.read_csv(unt_case_path, sep="\t", header=0)
+
+        merged_df = dnv_df.merge(inh_df, on=["gene_id"], how="outer"
+                         ).merge(dnv_ctrl_df, on=["gene_id"], how="outer"
+                         ).merge(unt_df, on=["gene_id"], how="outer"
+                         ).fillna(0)
+
+        cols = [
+            "gene_id",
+            f"dn.{tag}",
+            f"dn.{tag}.sib",
+            f"in.t.{tag}",
+            f"in.u.{tag}",
+        ]
+        tag_df = merged_df[cols].copy()
+        if output_df is None:
+            output_df = tag_df
+        else:
+            output_df = output_df.merge(tag_df, on="gene_id", how="outer").fillna(0)
+    
+    gencode_df = pd.read_csv(args.gencode_file, sep="\t", header=None
+                    )[[0,6,7]].rename(columns={0: "chrom", 6: "Hugo_Symbol", 7: "gene_id"})
+    gencode_df = gencode_df[~gencode_df["chrom"].str.contains("chrX|chrY")
+                            ][["gene_id", "Hugo_Symbol"]]
+    gencode_df["gene_id"] = gencode_df["gene_id"].apply(lambda x: x.split(".")[0])
+    output_df = gencode_df.merge(output_df, on="gene_id", how="left").fillna(0)
+
+    # Load constraint metrics and gene mut rates for LoF/mis variants
+    constraint_df = pd.read_csv(args.constraint_file, sep="\t", header=0
+                        )[['gene', 'canonical', 'lof.mu', 
+                           'mis.mu', 'lof.oe_ci.upper', 'transcript_type']].rename(
+                        columns={'gene': 'Hugo_Symbol', 'lof.oe_ci.upper': 'LOEUF'})
+    constraint_filtered = constraint_df[
+        (constraint_df["canonical"] == True) & (constraint_df["transcript_type"] == "protein_coding")
+        ][['Hugo_Symbol', 'lof.mu', 'mis.mu', 'LOEUF']]
+    output_df = output_df.merge(constraint_filtered, on="Hugo_Symbol", how="left")
+
+    merged_input_path = os.path.join(merged_outdir, f"TADA_coding.txt")
+    output_df.to_csv(merged_input_path, sep="\t", index=False, header=True)
+    logging.info(f"Merged TADA coding input file: {merged_input_path}.")
+
 
 def main(args):
     logging.basicConfig(level=logging.INFO)
     
     if args.mode == "build":
         run_build(args)
+    elif args.mode == "build-coding":
+        run_build_coding(args)
     elif args.mode == "merge":
         run_merge(args)
+    elif args.mode == "merge-coding":
+        run_merge_coding(args)
     else:
         logging.error("Invalid mode selected.")
         sys.exit(1)
