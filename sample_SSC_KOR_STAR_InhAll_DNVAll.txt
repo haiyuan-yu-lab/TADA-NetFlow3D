@@ -1,0 +1,9 @@
+variable	value
+n_dn_case_noncoding	2674
+n_dn_control_noncoding	2049
+n_in_case_noncoding	2674
+n_in_control_noncoding	2049
+n_dn_case_coding	2674
+n_dn_control_coding	2049
+n_in_case_coding	2674
+n_in_control_coding	2049

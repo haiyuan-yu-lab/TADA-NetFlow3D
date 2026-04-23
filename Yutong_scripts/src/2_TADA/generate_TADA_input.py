@@ -34,6 +34,9 @@ def parse_arguments():
     p_build.add_argument("--enhancer-prefix", type=str, default="all_peaks_element_200bp_e", help="Prefix for enhancer BED files. " \
                                                 "If provided, each enhancer file is named as <prefix>.bed")
     p_build.add_argument("--sex", type=str, choices=["male", "female", "any"], default="any", help="Sex of samples to consider.")
+    p_build.add_argument("--cohort", type=str, choices=["SSC_KOR_STAR", "SPARK", "ALL"], default="ALL", 
+                         help="Sample cohort to consider. 'SSC_KOR_STAR' includes samples from SSC, KOR, and STAR cohorts; " \
+                         "'SPARK' includes samples from SPARK cohort; 'ALL' includes all samples.")
     p_build.add_argument("--gnomad-null-only", action="store_true", help="If set, require gnomADg_AF == '.'")
     p_build.add_argument("--gnomad-af-max", type=float, default=None, help="If set, require gnomADg_AF <= this value. Ignored if --gnomad-null-only is used.")
     p_build.add_argument("--cadd-min", type=int, default=None, help="Minimum CADD_PHRED for SNVs. If omitted, CADD filter is skipped.")
@@ -48,6 +51,9 @@ def parse_arguments():
     p_build_coding.add_argument("--vcf", type=str, required=True, help="Path to the input variant file (VCF format).")
     p_build_coding.add_argument("--type", type=str, choices=["dnv", "inh", "untrans"], required=True, help="Type of variants to process: 'dnv', 'inh', or 'untrans'.")
     p_build_coding.add_argument("--sex", type=str, choices=["male", "female", "any"], default="any", help="Sex of samples to consider.")
+    p_build_coding.add_argument("--cohort", type=str, choices=["SSC_KOR_STAR", "SPARK", "ALL"], default="ALL", 
+                                help="Sample cohort to consider. 'SSC_KOR_STAR' includes samples from SSC, KOR, and STAR cohorts; " \
+                                "'SPARK' includes samples from SPARK cohort; 'ALL' includes all samples.")
     p_build_coding.add_argument("--gnomad-null-only", action="store_true", help="If set, require gnomADg_AF == '.'")
     p_build_coding.add_argument("--lof-regex", type=str, default=None, 
                                 help="Regex pattern to identify LoF variants based on VEP annotations.")
@@ -58,13 +64,18 @@ def parse_arguments():
     p_merge = subparsers.add_parser("merge",
         help="Merge De novo, Inherited, and Untransmitted TADA input files into a combined file."
     )
-
+    p_merge.add_argument("--cohort", type=str, choices=["SSC_KOR_STAR", "SPARK", "ALL"], default="ALL",
+                        help="Sample cohort to consider. 'SSC_KOR_STAR' includes samples from SSC, KOR, and STAR cohorts; " \
+                             "'SPARK' includes samples from SPARK cohort; 'ALL' includes all samples.")
     p_merge.add_argument("--mut-rate-file", type=str, default=None, help="Path to the mutation rate file.")
     
     # ----- merge coding mode ------
     p_merge_coding = subparsers.add_parser("merge-coding",
         help="Merge De novo, Inherited, and Untransmitted coding TADA input files into a combined file."
     )
+    p_merge_coding.add_argument("--cohort", type=str, choices=["SSC_KOR_STAR", "SPARK", "ALL"], default="ALL",
+                                help="Sample cohort to consider. 'SSC_KOR_STAR' includes samples from SSC, KOR, and STAR cohorts; " \
+                                     "'SPARK' includes samples from SPARK cohort; 'ALL' includes all samples.")
     p_merge_coding.add_argument("--gencode-file", type=str, required=True, help="Path to the Gencode gene annotation bed file.")
     p_merge_coding.add_argument("--constraint-file", type=str, required=True, help="Path to the gene constraint metrics file.")
     return parser.parse_args()
@@ -207,7 +218,7 @@ def count_var_per_gene(vcf_path: str, gene_idx: int, outdir: str, tag: str, col_
 
 def run_build(args):
     logging.info("Running in build mode.")
-    outdir = f"{args.outdir}/{args.type}"
+    outdir = f"{args.outdir}/{args.cohort}/{args.type}"
 
     vcf_overlapper = VCFBEDOverlapper(
         config=load_enhancer_dict(args.config),
@@ -223,20 +234,28 @@ def run_build(args):
     enhancer_linked_genes(outdir=outdir, config=vcf_overlapper.config, tss_ref=args.tss_ref)
     
     logging.info("Generating TADA input files in directory: %s", outdir)
+
     vcf_handler = VCFHandler()
     vcf_handler.set_vcf(args.vcf)
     case_vcf_path = os.path.join(outdir, "case.vcf.gz")
     ctrl_vcf_path = os.path.join(outdir, "ctrl.vcf.gz")
-    base_inc_case, any_inc_case = build_filters(sex=args.sex, status="case", 
-                                     gnomad_null_only=args.gnomad_null_only, 
-                                     gnomad_af_max=args.gnomad_af_max,
-                                     cadd_min=args.cadd_min, phylop_min=args.phylop_min,
-                                     phastcons_min=args.phastcons_min)
-    base_inc_ctrl, any_inc_ctrl = build_filters(sex=args.sex, status="control", 
-                                     gnomad_null_only=args.gnomad_null_only, 
-                                     gnomad_af_max=args.gnomad_af_max,
-                                     cadd_min=args.cadd_min, phylop_min=args.phylop_min,
-                                     phastcons_min=args.phastcons_min)
+    base_inc_case, any_inc_case = build_filters(
+        sex=args.sex, status="case", 
+        cohort=args.cohort,
+        gnomad_null_only=args.gnomad_null_only, 
+        gnomad_af_max=args.gnomad_af_max,
+        cadd_min=args.cadd_min, phylop_min=args.phylop_min,
+        phastcons_min=args.phastcons_min
+    )
+    base_inc_ctrl, any_inc_ctrl = build_filters(
+        sex=args.sex, status="control", 
+        cohort=args.cohort,
+        gnomad_null_only=args.gnomad_null_only, 
+        gnomad_af_max=args.gnomad_af_max,
+        cadd_min=args.cadd_min, phylop_min=args.phylop_min,
+        phastcons_min=args.phastcons_min
+    )
+
     logging.info("Filtering case variants - Base include: %s, " \
                  "Include any groups: %s", base_inc_case, any_inc_case)
     vcf_handler.pass_filters(output_path=case_vcf_path, vcf_path=args.vcf, include=base_inc_case,
@@ -277,7 +296,7 @@ def run_build_coding(args):
         tag = "misa"
     else:
         raise ValueError("At least one of --lof-regex, --misb, or --misa must be specified.")
-    outdir = f"{args.outdir}/{args.type}/{tag}"
+    outdir = f"{args.outdir}/{args.cohort}/{args.type}/{tag}"
     os.makedirs(outdir, exist_ok=True)
     
     vcf_handler = VCFHandler()
@@ -286,6 +305,7 @@ def run_build_coding(args):
     ctrl_vcf_path = os.path.join(outdir, "ctrl.vcf.gz")
     base_inc_case, any_inc_case = build_filters(
         sex=args.sex, status="case", 
+        cohort=args.cohort,
         gnomad_null_only=args.gnomad_null_only,
         lof_regex=args.lof_regex,
         mpcb=args.misb,
@@ -293,6 +313,7 @@ def run_build_coding(args):
     )
     base_inc_ctrl, any_inc_ctrl = build_filters(
         sex=args.sex, status="control", 
+        cohort=args.cohort,
         gnomad_null_only=args.gnomad_null_only,
         lof_regex=args.lof_regex,
         mpcb=args.misb,
@@ -318,10 +339,10 @@ def run_build_coding(args):
 def run_merge(args):
     logging.info("Running in merge mode.")
     config = load_enhancer_dict(args.config)
-    dnv_root = os.path.join(args.outdir, "dnv")
-    inh_root = os.path.join(args.outdir, "inh")
-    untrans_root = os.path.join(args.outdir, "untrans")
-    merged_outdir = os.path.join(args.outdir, "input")
+    dnv_root = os.path.join(args.outdir, args.cohort, "dnv")
+    inh_root = os.path.join(args.outdir, args.cohort, "inh")
+    untrans_root = os.path.join(args.outdir, args.cohort, "untrans")
+    merged_outdir = os.path.join(args.outdir, args.cohort, "input")
     os.makedirs(merged_outdir, exist_ok=True)
 
     if args.mut_rate_file:
@@ -376,10 +397,10 @@ def run_merge(args):
 
 def run_merge_coding(args):
     logging.info("Running in merge-coding mode.")
-    dnv_root = os.path.join(args.outdir, "dnv")
-    inh_root = os.path.join(args.outdir, "inh")
-    untrans_root = os.path.join(args.outdir, "untrans")
-    merged_outdir = os.path.join(args.outdir, "input_coding")
+    dnv_root = os.path.join(args.outdir, args.cohort, "dnv")
+    inh_root = os.path.join(args.outdir, args.cohort, "inh")
+    untrans_root = os.path.join(args.outdir, args.cohort, "untrans")
+    merged_outdir = os.path.join(args.outdir, args.cohort, "input_coding")
     os.makedirs(merged_outdir, exist_ok=True)
 
     output_df = None

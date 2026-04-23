@@ -12,9 +12,14 @@
 #SBATCH --nodelist=cbsuhy02
 
 COHORT="InhAll_DNVAll" # InhMult_DNVSimp / InhAll_DNVAll
+samples="SSC_KOR_STAR" # SSC_KOR_STAR / SPARK / ALL
+rare_damaging_mode="all" # all / control
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --cohort)               COHORT="$2"; shift 2;;
+    --samples)              samples="$2"; shift 2;;
+    --rare-damaging-mode)   rare_damaging_mode="$2"; shift 2;;
     *) echo "Unknown arg: $1" >&2; exit 1;;
   esac
 done
@@ -29,8 +34,8 @@ prefix_dnv_all="UCSF_20211001_dnms_WGS_hg38.with_multiplex.filtered.vep.with_asd
 prefix_inh_mult="All_inherited_WGS_hg38.filtered.vep.with_asdinfo"
 # prefix_inh_simp="All_inherited_WGS_hg38.onlysimplex.filtered.vep.with_asdinfo"
 prefix_inh_all="All_inherited_WGS_hg38.includesimplex.filtered.vep.with_asdinfo"
-prefix_untrans_mult="UCSF_parents_WGS_hg38.onlymultiplex.untransmitted.dedup"
-prefix_untrans_all="UCSF_parents_WGS_hg38.includesimplex.untransmitted.dedup"
+# prefix_untrans_mult="UCSF_parents_WGS_hg38.onlymultiplex.untransmitted.dedup"
+prefix_untrans_all="UCSF_parents_WGS_hg38.includesimplex.untransmitted.dedup.with_batch"
 
 # de novo
 dnv_simp_vcf="${var_prefilter_dir}/${prefix_dnv}.bcf"
@@ -73,7 +78,7 @@ enhancer_dir=/fs/cbsuhy01/storage/yz2676/projects/1-ASD/NetFlow_ASD/Yutong_scrip
 
 mutation_rate_file="/fs/cbsuhy01/storage/NetFlow_ASD/Mutability/20230919_samocha14_calcBaseLineRate_EG_mapping_allsample.bed"
 
-echo "Generating TADA input files in $outdir for cohort $COHORT"
+echo "Generating TADA input files in $outdir for cohort: $COHORT, samples: $samples"
 echo "DNV VCF: $dnv_vcf"
 echo "Inherited VCF: $inh_vcf"
 echo "Untransmitted VCF: $untrans_vcf"
@@ -84,6 +89,7 @@ python src/2_TADA/generate_TADA_input.py \
     build \
     --vcf "$dnv_vcf" \
     --type "dnv" \
+    --cohort "$samples" \
     --tss-ref "$coding_tss" \
     --enhancer-dir "$enhancer_dir" \
     --enhancer-prefix "bidirectional_peaks_element_2kb_200bp_e" \
@@ -98,6 +104,7 @@ python src/2_TADA/generate_TADA_input.py \
     build \
     --vcf "$inh_vcf" \
     --type "inh" \
+    --cohort "$samples" \
     --tss-ref "$coding_tss" \
     --enhancer-dir "$enhancer_dir" \
     --enhancer-prefix "bidirectional_peaks_element_2kb_200bp_e" \
@@ -112,6 +119,7 @@ python src/2_TADA/generate_TADA_input.py \
     build \
     --vcf "$untrans_vcf" \
     --type "untrans" \
+    --cohort "$samples" \
     --tss-ref "$coding_tss" \
     --enhancer-dir "$enhancer_dir" \
     --enhancer-prefix "bidirectional_peaks_element_2kb_200bp_e" \
@@ -121,14 +129,46 @@ python src/2_TADA/generate_TADA_input.py \
     --phastcons-min 0.5
 
 echo "Combining dnv and inh TADA input files..."
-rare_damaging_case=$(bcftools view -H "$outdir/dnv/case.vcf.gz" | wc -l)
-rare_damaging_control=$(bcftools view -H "$outdir/dnv/ctrl.vcf.gz" | wc -l)
-dnv_var_count=$(bcftools view -H "$dnv_vcf" | wc -l)
-rare_damaging_rate=$(awk -v num=$((rare_damaging_case + rare_damaging_control)) -v den="$dnv_var_count" \
-  'BEGIN{ if(den==0) {print "nan"} else {printf "%.6f", num/den} }')
-# dnv_var_count=$(bcftools view -i 'INFO/STATUS="control"' -H "$dnv_vcf" | wc -l)
-# rare_damaging_rate=$(awk -v num="$rare_damaging_control" -v den="$dnv_var_count" \
-#   'BEGIN{ if(den==0) {print "nan"} else {printf "%.6f", num/den} }')
+rare_damaging_case=$(bcftools view -H "$outdir/$samples/dnv/case.vcf.gz" | wc -l)
+rare_damaging_control=$(bcftools view -H "$outdir/$samples/dnv/ctrl.vcf.gz" | wc -l)
+
+#  Match the denominator to the same cohort split used when generating
+# the cohort-specific case/control VCFs above.
+case "$samples" in
+    SPARK)
+        cohort_filter='INFO/BATCH="SPARK_WGS_1" || INFO/BATCH="SPARK_WGS_2" || INFO/BATCH="SPARK_WGS_3" || INFO/BATCH="SPARK"'
+        ;;
+    SSC_KOR_STAR)
+        cohort_filter='INFO/BATCH="SSC_WGS_9209" || INFO/BATCH="KOR_STAR" || INFO/BATCH="KOR-STAR"'
+        ;;
+    ALL)
+        cohort_filter=""
+        ;;
+    *)
+        echo "Unknown samples cohort: $samples" >&2
+        exit 1
+        ;;
+esac
+
+if [[ "$rare_damaging_mode" == "all" ]]; then
+    echo "Calculating rare damaging variant rate using all DNVs"
+    if [[ -n "$cohort_filter" ]]; then
+        dnv_var_count=$(bcftools view -i "$cohort_filter" -H "$dnv_vcf" | wc -l)
+    else 
+        dnv_var_count=$(bcftools view -H "$dnv_vcf" | wc -l)
+    fi
+    rare_damaging_rate=$(awk -v num=$((rare_damaging_case + rare_damaging_control)) -v den="$dnv_var_count" \
+        'BEGIN{ if(den==0) {print "nan"} else {printf "%.6f", num/den} }')
+elif [[ "$rare_damaging_mode" == "control" ]]; then
+    echo "Calculating rare damaging variant rate using only control DNVs"
+    if [[ -n "$cohort_filter" ]]; then
+        dnv_var_count=$(bcftools view -i "($cohort_filter) && INFO/STATUS=\"control\"" -H "$dnv_vcf" | wc -l)
+    else
+        dnv_var_count=$(bcftools view -i 'INFO/STATUS="control"' -H "$dnv_vcf" | wc -l)
+    fi
+    rare_damaging_rate=$(awk -v num="$rare_damaging_control" -v den="$dnv_var_count" \
+        'BEGIN{ if(den==0) {print "nan"} else {printf "%.6f", num/den} }')
+fi
 
 echo "Rare damaging variant rate in DNV control: $rare_damaging_rate"
 # providing mut rate files (Samocha et al. baseline rates)
@@ -144,14 +184,15 @@ roulette_generation_factor=1.015e-7
 python src/2_TADA/generate_TADA_input.py \
     --outdir "$outdir" \
     --config "$config" \
-    merge 
+    merge \
+    --cohort "$samples"
 
 mapfile -t keys_sanitized < <(
   jq -r 'keys[] | gsub(" "; "_")' $config
 )
 for key in "${keys_sanitized[@]}"; do
-    regions_file="${outdir}/input/TADA_${key}.txt"
-    out="${outdir}/input/TADA_${key}_roulette.txt"
+    regions_file="${outdir}/${samples}/input/TADA_${key}.txt"
+    out="${outdir}/${samples}/input/TADA_${key}_roulette_rd_${rare_damaging_mode}.txt"
     echo "Processing region: $key"
 
     : > "$out".tmp
