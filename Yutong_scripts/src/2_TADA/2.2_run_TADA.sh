@@ -22,8 +22,10 @@ enhancer_set=("Deconv Excitatory Neurons" "Deconv Astrocytes" "Deconv Microglia"
 
 coding="FuScaled" # FuScaled / FuRaw
 mut="Roulette_MR"
+cohort="SSC_KOR_STAR" # SSC_KOR_STAR / SPARK / ALL
+rare_damaging_mode="all" # all / control
 
-coding_file=${base_dir}/TADA_input_coding_${coding}.txt
+coding_file=${base_dir}/TADA_input_coding_${coding}_${cohort}.txt
 prior_file=${base_dir}/prior.txt
 info_file=${base_dir}/info.txt
 
@@ -34,6 +36,8 @@ while [[ $# -gt 0 ]]; do
     --mode)               MODE="$2"; shift 2;;
     --coding)             coding="$2"; shift 2;;
     --mut)                mut="$2"; shift 2;;
+    --cohort)             cohort="$2"; shift 2;;
+    --rare-damaging-mode) rare_damaging_mode="$2"; shift 2;;
     *) echo "Unknown arg: $1" >&2; exit 1;;
   esac
 done
@@ -60,7 +64,7 @@ if [[ "$MODE" == "coding" ]]; then
 else
     for enhancers in "${enhancer_set[@]}"; do
         noncoding="${enhancers// /_}"
-        input_file=TADA_${noncoding}_roulette.txt
+        input_file=TADA_${noncoding}_roulette_rd_${rare_damaging_mode}.txt
         jobs+=( "${noncoding}|${input_file}" )
     done
 fi
