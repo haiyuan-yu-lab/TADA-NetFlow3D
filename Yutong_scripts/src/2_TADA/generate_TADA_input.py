@@ -101,7 +101,7 @@ def enhancer_linked_genes(outdir: str, config: dict, tss_ref: str):
                 x.name
             )
         )
-        slopped_bt = centers.slop(b=50000, genome='hg38'
+        slopped_bt = centers.slop(b=100000, genome='hg38'
                                   ).cut([0, 1, 2, 3])
 
         tss_df = pd.read_csv(tss_ref, sep="\t", header=None

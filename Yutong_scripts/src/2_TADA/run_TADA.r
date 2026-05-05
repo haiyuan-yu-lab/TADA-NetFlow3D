@@ -88,6 +88,15 @@ for (i in c(prior_file, sample_file)) {
 }
 
 coding <- read.table(coding_file, header = TRUE, sep = "\t")
+if (!"Hugo_Symbol" %in% names(coding)) {
+  if ("gene" %in% names(coding)) {
+    coding$Hugo_Symbol <- coding$gene
+  } else if ("gene_gencodeV33" %in% names(coding)) {
+    coding$Hugo_Symbol <- coding$gene_gencodeV33
+  } else {
+    stop("Coding file is missing a gene symbol column: expected Hugo_Symbol, gene, or gene_gencodeV33.")
+  }
+}
 if (!is.null(noncoding_file)) {
   noncoding <- read.table(noncoding_file, header = TRUE, sep = "\t")
 }
@@ -120,8 +129,8 @@ for (var_type in c("ptv", "misb", "misa")) {
     coding[[paste0("bf.in.", var_type)]] <- BF_CC(
       count_case = coding[[paste0("in.t.", var_type)]],
       count_con = coding[[paste0("in.u.", var_type)]],
-      n_case = n_t_case_coding,
-      n_con = n_t_case_coding,
+      n_case = n_in_case_coding,
+      n_con = n_in_case_coding,
       mut = coding[[paste0("mut.", var_type)]],
       gamma.cc = coding[[paste0("prior.in.", var_type)]],
       floor = TRUE
@@ -158,8 +167,8 @@ if (!is.null(noncoding_file)) {
     noncoding$bf.in.em <- BF_CC(
         count_case=noncoding$in.t.em, 
         count_con=noncoding$in.u.em, 
-        n_case=n_t_case_noncoding, 
-        n_con=n_t_case_noncoding, 
+        n_case=n_in_case_noncoding, 
+        n_con=n_in_case_noncoding, 
         mut=noncoding[[mut_col]], 
         gamma.cc=rep(gamma.in.em, times = nrow(noncoding)),
         floor=FALSE
@@ -186,4 +195,3 @@ write.table(coding[, c("gene_id", "Hugo_Symbol", "LOEUF", "pLI", bf_cols, "fdr",
             sep = "\t", 
             row.names = FALSE,
             quote = FALSE)
-
