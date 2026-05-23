@@ -168,10 +168,11 @@ BF_DN <- function(count_case, count_con, n_case, n_con, mut, gamma.dn, beta.dn){
   # BF_case[BF_case<1] <- 1
   
   ### Combine proband and sibling BF evidence
-  ### Enforce BF back to 1 if no observations in probands or siblings
+  ### Enforce BF back to 1 if no observations in probands and siblings
   BF <- pmax(BF_case/BF_con, 1)
-  BF[which(count_case==0 & count_con==0)] <- 1
   BF[is.na(BF)] <- 1
+  BF[which((count_case+count_con)==0)] <- 1
+
   return(BF)
 }
 
@@ -189,7 +190,7 @@ BF_DN <- function(count_case, count_con, n_case, n_con, mut, gamma.dn, beta.dn){
 ## Output:
 # BF: a vector of Bayes factors of case-control/inherited evidence from SNV/indel/DEM for each gene/TRE for a given variant type
 ################################################################################################
-BF_CC <- function(count_case, count_con, n_case, n_con, mut, gamma.cc, nu=5000){
+BF_CC <- function(count_case, count_con, n_case, n_con, mut, gamma.cc, floor, nu=5000){
   rho.in = nu * sum(count_con, na.rm=T) / (2*length(mut)*n_con)
   rho.in = as.numeric(rho.in)*mut/mean(mut, na.rm=TRUE)
   BF = sapply((1:length(mut)), function(i){
@@ -197,7 +198,9 @@ BF_CC <- function(count_case, count_con, n_case, n_con, mut, gamma.cc, nu=5000){
     })
 
   ### Enforce BF back to 1 if no mutation rate or no observed variant counts
-  BF[BF<1] <- 1
+  if (floor){
+    BF[BF<1] <- 1
+  }
   BF[mut==0] <- 1
   BF[which((count_case+count_con)==0)] <- 1
   return(BF)
@@ -206,15 +209,36 @@ BF_CC <- function(count_case, count_con, n_case, n_con, mut, gamma.cc, nu=5000){
 ################################################################################################
 ### Helper function to distribute BF evidence inversely to LOEUF score for CNV evidence
 ## Input: 
-# x: a vector of log Bayes factors evaluated for CNV events, with names labeled by a "," concatenated string of constituent genes
+# lBF: a vector of log Bayes factors evaluated for CNV events, with names labeled by a "," concatenated string of constituent genes
+# target: a "," concatenated string of constituent genes
 # info: matrix that contains gene level information (Supplementary Table 8: gene names, constraint)
 ## Output:
-# evidence: a matrix containing the log Bayes (lBF) factor contributed to each gene(gene)from evaluated CNVs
+# evidence: a matrix containing the log Bayes (lBF) factor contributed to each gene from evaluated CNVs
 ################################################################################################
 split_weight <- function(lBF, target, info){
   genes <- unlist(str_split(target, ","))
   oes <- info$LOEUF[match(genes, info$gene_id)]
   weights <- sum(oes, na.rm = TRUE)/oes
+  weights <- weights/sum(weights, na.rm = TRUE)
+  return(evidence=data.frame(gene=genes, weight=weights, lBF=lBF*weights))
+}
+
+################################################################################################
+### Helper function to distribute BF evidence inversely to linear distance of target genes for enhancers
+## Input: 
+# lBF: a vector of log Bayes factors evaluated for enhancer events, with names labeled by a "," concatenated string of constituent genes
+# target: a "," concatenated string of target genes
+# distance: a "," concatenated string of distances from enhancer to target genes
+## Output:
+# evidence: a matrix containing the log Bayes (lBF) factor contributed to each gene from evaluated enhancers
+################################################################################################
+split_weight_by_dist <- function(lBF, target, distance, alpha=1, eps = 1e-12){
+  genes <- unlist(str_split(target, ","))
+  dists <- as.numeric(unlist(str_split(distance, ",")))
+  dists <- pmax(dists, eps) # guard: avoid log(0) or log(negative)
+  logw <- -alpha * log(dists)
+  logw <- logw - max(logw, na.rm = TRUE) # numerical stability
+  weights <- exp(logw)
   weights <- weights/sum(weights, na.rm = TRUE)
   return(evidence=data.frame(gene=genes, weight=weights, lBF=lBF*weights))
 }
