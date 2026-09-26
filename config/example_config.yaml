@@ -1,0 +1,23 @@
+project_name: example
+results_dir: results/example
+tada:
+  coding_file: examples/input/coding_counts.tsv
+  noncoding_file: examples/input/noncoding_counts.tsv
+  info_file: examples/input/gene_information.tsv
+  prior_file: examples/input/priors.tsv
+  sample_file: examples/input/sample_sizes.tsv
+  include_de_novo_noncoding: true
+  include_inherited_noncoding: true
+  floor_inherited_bf: false
+netflow3d:
+  interactome: examples/input/interactome.tsv
+  id_mapping: examples/input/id_mapping.tsv
+  disrupted_interactions: examples/input/disrupted_interactions.tsv
+  expressed_genes: null
+  restart_probability: 0.2
+  disrupted_edge_weight: 5.0
+  resolution: low
+  max_subnetwork_size: 10
+  delta_trials: 2
+  random_seed: 2062
+  threads: 1

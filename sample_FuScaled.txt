@@ -1,9 +1,0 @@
-variable	value
-n_dn_case_noncoding	4467
-n_dn_control_noncoding	2938
-n_t_case_noncoding	4794
-n_t_control_noncoding	3101
-n_dn_case_coding	4467
-n_dn_control_coding	2938
-n_t_case_coding	4794
-n_t_control_coding	3101

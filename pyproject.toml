@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tada-netflow3d"
+version = "0.1.0.dev0"
+description = "Provisional TADA-to-NetFlow3D analysis framework"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+  "networkx>=3.0,<4",
+  "numpy>=1.24,<3",
+  "pandas>=2.0,<3",
+]
+
+[tool.setuptools]
+py-modules = []

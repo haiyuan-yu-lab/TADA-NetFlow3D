@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+message: "Please cite the TADA-NetFlow3D software and associated publication."
+title: "TADA-NetFlow3D"
+type: software
+version: "0.1.0-dev"
+date-released: 2026-09-26
+repository-code: "https://github.com/haiyuan-yu-lab/TADA-NetFlow3D"
+authors:
+  - family-names: "Zhang"
+    given-names: "Yingying"
+preferred-citation:
+  type: article
+  title: "TADA-NetFlow3D"
+  authors:
+    - family-names: "Zhang"
+      given-names: "Yingying"
+  notes: "Replace with the final manuscript citation before release."

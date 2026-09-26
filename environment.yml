@@ -1,0 +1,14 @@
+name: tada-netflow3d
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - python=3.11
+  - numpy=1.26
+  - pandas=2.2
+  - scipy=1.13
+  - networkx=3.3
+  - pyyaml=6
+  - r-base=4.3
+  - r-stringr=1.5
+  - r-dplyr=1.1
