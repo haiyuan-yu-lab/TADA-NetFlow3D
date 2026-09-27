@@ -4,10 +4,6 @@ TADA-NetFlow3D is a provisional, end-to-end framework for combining gene-level
 Bayesian association evidence with network diffusion. It supports Extended TADA
 analysis followed by NetFlow3D subnetwork discovery.
 
-> **Development status:** the repository structure and command-line contracts
-> are ready for collaborative polishing. The included scientific implementations
-> are provisional and may be replaced by finalized versions without changing the
-> user-facing workflow.
 
 ## Workflow
 
