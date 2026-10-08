@@ -1,41 +1,66 @@
-# Complete real TADA examples
+# Examples
 
-These examples fit SSC/KOR/STAR and SPARK independently with full prepared
-aggregate input tables. They use FuRaw coding counts and Combined Simple
-noncoding counts with control-derived rare-damaging-rate scaling (`rd_control`).
-They are not downsampled or combined across cohorts.
+Run TADA for SSC/KOR/STAR and SPARK, or run NetFlow3D with a prepared real-data
+subset. All commands below run from the repository root and use
+[`config/example_config.yaml`](../config/example_config.yaml).
 
-## Input files
+## TADA
 
-| Example file | Contents | Data rows |
-|---|---|---:|
-| `input/tada/shared/gene_information.tsv` | Gene information | 18,128 |
-| `input/tada/shared/priors.tsv` | Model priors | 5 |
-| `input/tada/SSC_KOR_STAR/coding_counts.tsv` | SSC/KOR/STAR coding counts | 18,128 |
-| `input/tada/SPARK/coding_counts.tsv` | SPARK coding counts | 18,128 |
-| `input/tada/SSC_KOR_STAR/noncoding_counts.tsv` | SSC/KOR/STAR noncoding counts | 33,468 |
-| `input/tada/SPARK/noncoding_counts.tsv` | SPARK noncoding counts | 33,468 |
-| `input/tada/SSC_KOR_STAR/sample_sizes.tsv` | SSC/KOR/STAR sample sizes | 8 |
-| `input/tada/SPARK/sample_sizes.tsv` | SPARK sample sizes | 8 |
-
-## Run and compare
-
-From the repository root:
+Run both cohorts, or select one:
 
 ```bash
-bash workflows/run_examples.sh
-# Or select a cohort:
+bash workflows/run_tada.sh config/example_config.yaml
+# Alternatively, run SPARK only:
 bash workflows/run_tada.sh config/example_config.yaml --cohort SPARK
 ```
 
-Shared settings are in `config/example_config.yaml`: all de novo and inherited
-coding/enhancer evidence enabled, `mut-col: mut.em`, and `in-floor: false`.
-Priors and sample sizes come from the bundled tables; `pi0` is 0.95.
+The configuration enables de novo and inherited coding and noncoding evidence.
+Each cohort is fitted separately.
+
+| Input file | Contents |
+|---|---|
+| `input/tada/shared/gene_information.tsv` | Gene information |
+| `input/tada/shared/priors.tsv` | Model priors |
+| `input/tada/SSC_KOR_STAR/coding_counts.tsv` | SSC/KOR/STAR coding counts |
+| `input/tada/SPARK/coding_counts.tsv` | SPARK coding counts |
+| `input/tada/SSC_KOR_STAR/noncoding_counts.tsv` | SSC/KOR/STAR noncoding counts |
+| `input/tada/SPARK/noncoding_counts.tsv` | SPARK noncoding counts |
+| `input/tada/SSC_KOR_STAR/sample_sizes.tsv` | SSC/KOR/STAR sample sizes |
+| `input/tada/SPARK/sample_sizes.tsv` | SPARK sample sizes |
 
 Results are written to `results/examples/tada/<cohort>/tada_results.tsv`.
-Corresponding expected outputs are under `examples/expected_output/tada/<cohort>/`.
-Expected outputs are generated with R 4.0.5 using the supplied YAML settings.
-Each output represents a separate cohort fit; it is not a combined-cohort result.
 
-No synthetic dataset or NetFlow3D network subset is bundled. NetFlow3D examples
-will be added separately; the overall example script currently runs TADA only.
+## NetFlow3D
+
+Run with the bundled network inputs and prepared gene scores:
+
+```bash
+bash workflows/run_netflow3d.sh config/example_config.yaml
+```
+
+The network is a randomly sampled subset of HINT HQ. The configuration uses
+1,000 background trials. Gene scores are supplied directly, so no BF conversion
+is needed before running this example.
+
+| Input file | Contents |
+|---|---|
+| `input/netflow3d/gene_scores.tsv` | Prepared gene scores (`Gene` and `Score`) |
+| `input/netflow3d/interactome.tsv` | HINT HQ binary interaction subset, as UniProt pairs |
+| `input/netflow3d/id_mapping.tsv` | UniProt mappings to gene and transcript IDs |
+| `input/netflow3d/disrupted_interactions.tsv` | Disrupted interactions |
+| `input/netflow3d/expressed_genes.txt` | Expressed transcript IDs (ENST) |
+
+Results are written under `results/examples/netflow/output/example/`.
+
+The example's subnetworks should not be interpreted as biological findings
+from the study. Sampling removes many proteins and interactions, changing
+heat diffusion and the background threshold, and the subset does
+not represent the full network's interaction structure.
+
+For your own analyses, see [input formats](../docs/input_formats.md) and
+[reference data](../docs/reference_data.md).
+
+## Output directories
+
+`results/` contains generated runs and is ignored by Git.
+`examples/expected_output/` contains saved reference results for the examples.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Convert gene-level TADA Bayes factors into NetFlow3D heat scores."""
+"""Convert gene-level TADA Bayes factors into nonnegative NetFlow3D heat scores."""
 
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ def parse_args() -> argparse.Namespace:
         "--transform",
         choices=("log", "log10", "none"),
         default="log",
-        help="Transformation applied to the Bayes factor (default: log).",
+        help="Transformation applied to the Bayes factor, then floored at zero (default: log).",
     )
     return parser.parse_args()
 
@@ -44,6 +44,7 @@ def main() -> None:
     else:
         score = bf
 
+    score = score.clip(lower=0)
     output = pd.DataFrame({"Gene": table[args.gene_column], "Score": score})
     if output["Gene"].isna().any() or output["Gene"].duplicated().any():
         raise SystemExit("Gene identifiers must be non-missing and unique.")

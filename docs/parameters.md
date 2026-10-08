@@ -68,4 +68,5 @@ not the observed network's heat or disrupted-edge weights.
 
 The bash wrapper sets OMP, MKL, OpenBLAS, and NumExpr to one thread per worker.
 Only low/high resolution is exposed, and the diffusion implementation is fixed.
-No NetFlow3D settings are read from the example YAML by the current workflow.
+The same settings can be provided under `netflow3d` in YAML, using the long
+option names without `--`. Omitted settings use these defaults.

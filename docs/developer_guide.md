@@ -1,7 +1,7 @@
 # Developer guide
 
 Scientific implementations live in `src/`; launchers and format utilities live
-in `scripts/`; bash workflows live in `workflows/`. TADA YAML keys follow the
+in `scripts/`; bash workflows live in `workflows/`. YAML keys follow the
 runner's long-option names. Keep configuration, help, and documentation aligned.
 
 For code changes:

@@ -1,4 +1,5 @@
-"""Heat diffusion, randomized background calibration, and module extraction.
+"""
+Heat diffusion, randomized background calibration, and module extraction.
 
 Heat transfer is E = beta * (I - (1-beta)W)^-1 * diag(heat).
 Columns are sources; rows are targets. Only transfers strictly above delta

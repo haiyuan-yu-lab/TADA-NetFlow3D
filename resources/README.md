@@ -1,10 +1,9 @@
 # Reference resources
 
 Production NetFlow3D runs require a binary protein interactome and a UniProt ID
-mapping table. These resources are not committed here because they are large and
-have independent versioning and licensing requirements.
+mapping table. Full reference datasets are not committed here; obtain them
+separately and record their versions and sources in [`manifest.tsv`](manifest.tsv).
+See the [reference-data guide](../docs/reference_data.md).
 
-The bundled examples contain TADA input tables only; no network subset is
-currently included. Maintainers should add approved download URLs, release versions,
-checksums, citations, and licenses to `manifest.tsv`. Download resources manually
-from those sources once their entries are complete; no downloader is provided.
+The bundled examples contain TADA input tables and a small NetFlow3D subset.
+They can be run without downloading full reference datasets.

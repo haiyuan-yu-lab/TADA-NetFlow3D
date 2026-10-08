@@ -33,7 +33,20 @@ See [input formats](input_formats.md) for the table columns.
 The default analysis settings can be used without listing them in the command.
 See the [parameter reference](parameters.md#netflow3d-parameters) for defaults,
 background modes, and optional overrides. All long options use hyphens.
-The bash entry point reads command-line arguments, not the example YAML.
+
+## YAML configuration
+
+Run the bundled subset with the shared configuration:
+
+```bash
+bash workflows/run_netflow3d.sh config/example_config.yaml
+```
+
+The `netflow3d` section uses the same option names without `--`. Omitted options
+use the runner defaults; optional file paths may be `null`. Paths inside YAML
+are relative to the repository root or absolute. The configuration filename is
+relative to your current directory or absolute. The TADA section is ignored
+when running NetFlow3D. Edit a copy to use your own data.
 
 ## Reusing backgrounds
 

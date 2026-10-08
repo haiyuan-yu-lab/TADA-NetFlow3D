@@ -7,6 +7,7 @@ python3 -m py_compile \
   "${repo_dir}/scripts/tada_to_netflow3d.py" \
   "${repo_dir}/scripts/validate_inputs.py" \
   "${repo_dir}/scripts/run_tada_from_config.py" \
+  "${repo_dir}/scripts/run_netflow_from_config.py" \
   "${repo_dir}/src/netflow3d/run_netflow3d.py" \
   "${repo_dir}/src/netflow3d/diffusion.py"
 python3 "${repo_dir}/tests/test_converter.py"
@@ -20,6 +21,10 @@ for cohort in SSC_KOR_STAR SPARK; do
     --sample-sizes "${repo_dir}/examples/input/tada/${cohort}/sample_sizes.tsv" \
     --mut-col mut.em
 done
+
+python3 "${repo_dir}/scripts/validate_inputs.py" \
+  --gene-score "${repo_dir}/examples/input/netflow3d/gene_scores.tsv" \
+  --disrupted-interactions "${repo_dir}/examples/input/netflow3d/disrupted_interactions.tsv"
 
 for script in "${repo_dir}"/workflows/*.sh; do
   bash -n "$script"
