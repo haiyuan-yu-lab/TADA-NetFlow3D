@@ -1,7 +1,0 @@
-gene_id	gene	LOEUF	pLI	prior.dn.ptv	prior.dn.misb	prior.dn.misa	prior.in.ptv	prior.in.misb	prior.in.misa	mut.ptv	mut.misb	mut.misa	dn.ptv	dn.ptv.sib	dn.misb	dn.misb.sib	dn.misa	dn.misa.sib	in.t.ptv	in.u.ptv	in.t.misb	in.u.misb	in.t.misa	in.u.misa
-GENE001	SYN1	0.20	0.98	15	8	3	1.5	1.4	1.2	0.000010	0.000020	0.000030	2	0	1	0	0	0	2	0	2	1	3	1
-GENE002	SYN2	0.35	0.90	12	7	2.5	1.5	1.4	1.2	0.000012	0.000022	0.000032	1	0	1	0	0	0	1	0	2	1	2	1
-GENE003	SYN3	0.50	0.75	10	6	2	1.4	1.3	1.2	0.000014	0.000024	0.000034	1	0	0	0	1	0	1	0	1	1	2	1
-GENE004	SYN4	0.70	0.40	8	5	1.8	1.3	1.2	1.1	0.000016	0.000026	0.000036	0	0	1	0	0	0	1	1	1	0	1	1
-GENE005	SYN5	0.90	0.10	6	4	1.5	1.2	1.1	1.1	0.000018	0.000028	0.000038	0	0	0	0	1	0	0	1	1	1	1	1
-GENE006	SYN6	1.10	0.02	5	3	1.3	1.1	1.1	1.05	0.000020	0.000030	0.000040	0	0	0	0	0	0	0	1	0	1	1	1

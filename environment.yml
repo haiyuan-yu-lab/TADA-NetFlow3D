@@ -9,6 +9,7 @@ dependencies:
   - scipy=1.13
   - networkx=3.3
   - pyyaml=6
-  - r-base=4.3
-  - r-stringr=1.5
-  - r-dplyr=1.1
+  - r-base=4.0.5
+  - r-stringr=1.4.1
+  - r-dplyr=1.0.10
+  - bioconductor-genomicranges=1.42.0

@@ -1,18 +1,14 @@
-# Developer replacement guide
+# Developer guide
 
-The current source files are provisional. Finalized scripts may replace them as
-long as the repository remains self-contained and the documented interface is
-preserved.
+Scientific implementations live in `src/`; launchers and format utilities live
+in `scripts/`; bash workflows live in `workflows/`. TADA YAML keys follow the
+runner's long-option names. Keep configuration, help, and documentation aligned.
 
-For each replacement:
+For code changes:
 
-1. Keep the entry-point location and existing flags where practical.
-2. Remove personal absolute paths and undocumented imports.
-3. Validate required columns and parameter ranges.
-4. Preserve or deliberately version output schemas.
-5. Update the environment and reference manifest.
-6. Run `bash tests/run_checks.sh` and the full synthetic example.
-7. Record user-visible changes in `CHANGELOG.md`.
+1. Keep scientific changes separate from interface or formatting changes.
+2. Document required inputs, selected evidence, output schemas, and dependencies.
+3. Keep output formats stable. Document any incompatible changes in `CHANGELOG.md`.
+4. Run `bash tests/run_checks.sh` and relevant scientific comparisons.
 
-Do not add figure notebooks, participant-level data, manuscript-only analyses,
-or generated results to the core repository.
+Do not add manuscript notebooks or participant-level data to the core software.

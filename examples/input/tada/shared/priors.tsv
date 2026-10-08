@@ -1,5 +1,6 @@
 variable	value
 beta.dn	0.2
-pi0	0.94
-gamma.dn.em	5
+nu.in	1.0
+pi0	0.95
+gamma.dn.em	5.0
 gamma.in.em	1.2

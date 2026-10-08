@@ -5,18 +5,22 @@ must use one consistent namespace and omit version suffixes where possible.
 
 ## TADA gene information
 
-Required columns: `gene_id`, `gene`, `LOEUF`, and `pLI`.
+Required metadata: `gene_id`, `LOEUF`, `pLI`, and a gene-symbol column.
+The runner resolves `Hugo_Symbol`, then `gene`, then `gene_gencodeV33`.
+Noncoding-only runs use this table as the output gene backbone.
 
 ## TADA coding table
 
-One row per gene. Required fields cover mutation rates, priors, de novo case and
+One row per gene, with gene metadata. Fields for selected components cover
+mutation rates, priors, de novo case and
 sibling counts, and transmitted/untransmitted counts for `ptv`, `misb`, and
 `misa`. The canonical names are demonstrated in
-`examples/input/coding_counts.tsv`.
+`examples/input/tada/SSC_KOR_STAR/coding_counts.tsv`.
 
 ## TADA noncoding table
 
-One row per regulatory element. Required columns are `gene_id`, `mut.em`,
+One row per regulatory element. The mutation-rate column is selected explicitly with `--mut-col` (`mut.em`
+in the bundled examples). Component columns include `gene_id`,
 `dn.em`, `dn.em.sib`, `in.t.em`, and `in.u.em`. Multiple target genes are
 comma-separated in `gene_id`.
 
