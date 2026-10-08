@@ -97,27 +97,37 @@ and for configuration rules.
 
 ```bash
 python scripts/tada_to_netflow3d.py \
-  --tada-results results/example/tada_results.tsv \
-  --output results/example/netflow3d_gene_scores.tsv
+  --tada-results results/examples/tada/SPARK/tada_results.tsv \
+  --output results/examples/netflow/input/netflow3d_gene_scores.tsv
 ```
 
-The default NetFlow3D score is the natural logarithm of the total TADA Bayes
-factor.
+The converter defaults to the natural logarithm of the total TADA Bayes factor
+and does not clip negative values. NetFlow3D uses positive scores as heat
+sources. You can also supply your own prepared `Gene`/`Score` table.
 
 ### 3. Run NetFlow3D
 
+Supply your own network and ID mapping files in place of the paths below.
+Disrupted interactions and an expressed-gene list are optional inputs.
+
 ```bash
-python src/netflow3d/run_netflow3d.py \
-  --job_name example \
-  --gene_score results/example/netflow3d_gene_scores.tsv \
-  --binary_interactome examples/input/interactome.tsv \
-  --id_mapping examples/input/id_mapping.tsv \
-  --disrupted_interaction examples/input/disrupted_interactions.tsv \
-  --threads 1 \
-  --delta_trial 2 \
-  --max_subnetwork_size 10 \
-  --output_path results/example/netflow3d
+bash workflows/run_netflow3d.sh \
+  --job-name example \
+  --gene-score results/examples/netflow/input/netflow3d_gene_scores.tsv \
+  --binary-interactome /path/to/interactome.tsv \
+  --id-mapping /path/to/id_mapping.tsv \
+  --disrupted-interaction /path/to/disrupted_interactions.tsv \
+  --expressed-genes /path/to/expressed_genes.txt \
+  --output-dir results/examples/netflow/output
 ```
+
+The command uses the default analysis settings; optional overrides are listed
+in the [parameter reference](docs/parameters.md#netflow3d-parameters).
+
+Results are written to `results/examples/netflow/output/example/`. Repeating the same job name
+and output directory replaces that job's generated files; a different job name
+keeps the runs separate. See the [NetFlow3D guide](docs/netflow3d.md) for the
+method.
 
 ## Example data
 

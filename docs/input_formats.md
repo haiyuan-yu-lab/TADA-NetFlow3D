@@ -32,7 +32,10 @@ the example files. Sample sizes count analyzed individuals, not variants.
 ## NetFlow3D gene scores
 
 Columns: `Gene` and `Score`. `Gene` may contain a gene symbol or supported gene
-identifier present in the ID mapping. `Score` must be finite and numeric.
+identifier present in the ID mapping. Supply finite numeric scores; positive
+scores initiate diffusion. If several input rows map to the same protein,
+NetFlow3D uses the largest score. Network proteins without a matching score
+start with zero heat and remain available to receive heat from other proteins.
 
 ## Binary interactome
 
@@ -41,12 +44,15 @@ Headerless two-column table of UniProt accessions, one interaction per row.
 ## UniProt ID mapping
 
 Headerless three-column UniProt mapping table: UniProt accession, identifier
-type, and identifier. The provisional implementation reads columns one and
-three and strips isoform/version suffixes.
+type, and identifier. The runner reads columns one and three, removes UniProt
+isoform suffixes from the first column and version suffixes from the third.
+A gzip-compressed mapping table is also accepted.
 
 ## Disrupted interactions
 
 Optional table with `P1` and `P2` headers containing UniProt accessions.
+Isoform suffixes are removed and pairs deduplicated. Only existing network edges
+whose endpoints both have positive heat receive the specified edge weight.
 
 ## Expressed genes
 

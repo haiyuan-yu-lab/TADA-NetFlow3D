@@ -13,9 +13,15 @@ The converter writes `Gene` and `Score`. By default `Score = ln(bf)`.
 
 ## NetFlow3D
 
-- `<job>/subnetworks.txt`: comma-separated UniProt members and module size.
-- `<job>/initial_state.graphml.gz`: weighted input network and node heat scores.
-- `<job>/choose_delta.txt`: permutation results used to select delta.
-- `<job>/final_state.graphml.gz`: directed heat-flow graph after thresholding.
+All files are written under `<output-dir>/<job-name>/`. Start with the subnetwork
+results table; the other files support network inspection and background reuse.
 
-Downstream biological summaries are outside this repository’s scope.
+| File | Purpose |
+|---|---|
+| `<job-name>_subnetworks.txt` | Main results: `Subnetwork_genes` lists comma-separated UniProt IDs and `Subnetwork_size` gives the number of proteins, sorted by descending size |
+| `initial_state.graphml.gz` | Network before diffusion, with protein heat scores and interaction weights |
+| `bg_delta.txt` | Background calibration results; reuse with `--background-delta-file` to skip new background trials |
+| `final_state.graphml.gz` | Directed heat-transfer network after thresholding, for inspection or visualization |
+
+Rerunning the same output directory and job name replaces generated files;
+unrelated files are left in place. Use a different job name to retain both runs.

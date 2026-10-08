@@ -7,16 +7,21 @@ must not rely on laboratory-specific filesystem locations.
 
 ## Gene scores do not map to the network
 
-Confirm the gene namespace and mapping release. Ensembl version suffixes are
-stripped, but incompatible IDs cannot be inferred automatically.
+Confirm that the `Gene` values match identifiers in the third column of the
+UniProt mapping table. Version suffixes are removed from that mapping column;
+input `Gene` values must match the resulting identifiers. Unmatched score rows
+do not contribute heat. A run with no matching identifiers can complete without
+reporting a mapping error, so check the mapping if the output has no heat or
+subnetworks. The runner does not comprehensively validate score values; provide
+finite numeric scores.
 
 ## NetFlow3D uses too much memory
 
-The provisional implementation uses dense matrices within connected components.
-Use an appropriate compute node and record memory requirements. Optimization is
-a planned scientific-code polishing task.
+Diffusion can use substantial memory within connected components. Reduce
+`--n-workers` to lower the number of simultaneous background solves. The bash
+wrapper limits each numerical library to one thread per worker.
 
 ## A run directory already exists
 
-Choose a new job name or move the previous result. The program refuses to mix
-new output with an existing nonempty run.
+NetFlow3D writes under `<output-dir>/<job-name>/` and replaces its generated
+files when that job is repeated. Use a new `--job-name` to keep separate results.
