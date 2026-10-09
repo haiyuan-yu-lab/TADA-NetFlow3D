@@ -1,9 +1,12 @@
 # TADA-NetFlow3D
 
-TADA-NetFlow3D is a provisional, end-to-end framework for combining gene-level
-Bayesian association evidence with network diffusion. It supports Extended TADA
-analysis followed by NetFlow3D subnetwork discovery.
+TADA-NetFlow3D is an integrative computational framework for systematically characterizing the effects of rare variation, from coding and noncoding variant classes to individual genes and biological modules.
 
+The framework combines two complementary components. Extended TADA integrates rare variants across coding and noncoding classes to quantify gene-level association, enabling noncoding variant burden observed at the element level to be translated into evidence for specific target genes.
+
+NetFlow3D extends this gene-level evidence to the systems level by propagating association signals through a protein–protein interaction network informed by three-dimensional protein structural information. It identifies significantly interconnected gene modules in which genetic association converges on shared biological processes and pathways.
+
+Together, TADA-NetFlow3D provides a multiscale framework connecting rare genetic variation → gene-level association → molecular networks and biological processes, allowing coding and noncoding genetic evidence to be jointly analyzed while preserving the distinct information contributed by each.
 
 ## Workflow
 
