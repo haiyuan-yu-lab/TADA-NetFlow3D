@@ -1,18 +1,19 @@
 # Reference data
 
-Large third-party files are intentionally not stored in Git. The production
-workflow is expected to use a versioned HINT binary interactome, UniProt ID
-mapping, and optionally PIONEER protein-interface annotations.
+NetFlow3D uses two reference files, both provided under `resources/netflow3d/`:
 
-Before public release, `resources/manifest.tsv` must contain an approved source
-URL, exact version, SHA-256 checksum, citation, and license for every resource.
-Download resources from their documented sources and compare their checksums
-with the manifest. No automatic downloader is provided.
+| Argument | Bundled file | Contents |
+|---|---|---|
+| `--binary-interactome` | `HomoSapiens_binary_HINThq.txt` | Complete HINT HQ binary protein interaction network; headerless UniProt pairs |
+| `--id-mapping` | `HUMAN_9606_idmapping.dat.gz` | Complete human UniProt identifier mapping; accession, identifier type and identifier |
 
-Do not copy reference files from private cluster paths into a public repository
-without checking redistribution terms.
+The [manuscript configuration](../config/manuscript_config.yaml) uses these files.
+The NetFlow3D runner also uses them by default. The mapping remains gzip-compressed
+and can be read directly without unpacking it.
 
-The bundled [NetFlow3D example](../examples/README.md) uses a small subset and
-does not require full reference downloads. For your own analysis, supply the
-external files through `--binary-interactome` and `--id-mapping`, or set their
-paths in your YAML configuration.
+For your own references, pass other paths through these arguments or your YAML.
+See [input formats](input_formats.md) for the expected columns. Changing the
+reference network or mapping can change the resulting subnetworks.
+
+The [small NetFlow3D example](../examples/README.md) explicitly uses its own
+subset network and mapping instead of the complete references.

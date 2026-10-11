@@ -9,6 +9,7 @@ import shutil
 from argparse import Namespace
 from collections.abc import Sequence
 from os import PathLike
+from pathlib import Path
 
 import networkx as nx
 import pandas as pd
@@ -25,10 +26,11 @@ def args_parser() -> Namespace:
     parser.add_argument('-g', '--gene-score', required=True, help="Gene/Score TSV")
     parser.add_argument('-o', '--output-dir', required=True, help="Parent directory; results go into <output-dir>/<job-name>")
     parser.add_argument('-i', '--disrupted-interaction', help="P1/P2 TSV")
+    reference_dir = Path(__file__).resolve().parents[2] / "resources/netflow3d"
     parser.add_argument('-b', '--binary-interactome',
-                        default="data/netflow3d/metadata/HomoSapiens_binary_HINThq.txt")
+                        default=str(reference_dir / "HomoSapiens_binary_HINThq.txt"))
     parser.add_argument('-p', '--id-mapping',
-                        default="data/netflow3d/metadata/HUMAN_9606_idmapping.dat.gz")
+                        default=str(reference_dir / "HUMAN_9606_idmapping.dat.gz"))
     parser.add_argument('-X', '--expressed-genes', help="Expressed-gene list; omit to disable")
     parser.add_argument('-R', '--resolution', choices=['low', 'high'], default='low',
                         help="Minimum (low) or median (high) of finite background deltas")

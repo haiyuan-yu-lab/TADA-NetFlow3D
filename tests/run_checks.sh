@@ -8,6 +8,9 @@ python3 -m py_compile \
   "${repo_dir}/scripts/validate_inputs.py" \
   "${repo_dir}/scripts/run_tada_from_config.py" \
   "${repo_dir}/scripts/run_netflow_from_config.py" \
+  "${repo_dir}/scripts/reproduce_manuscript.py" \
+  "${repo_dir}/src/reproduction/manuscript_results.py" \
+  "${repo_dir}/src/reproduction/combine_cohort_bf.py" \
   "${repo_dir}/src/netflow3d/run_netflow3d.py" \
   "${repo_dir}/src/netflow3d/diffusion.py"
 python3 "${repo_dir}/tests/test_converter.py"

@@ -4,8 +4,8 @@ channels:
   - bioconda
 dependencies:
   - python=3.11
-  - numpy=1.26
-  - pandas=2.2
+  - numpy=2.0.2
+  - pandas=2.3.3
   - scipy=1.13
   - networkx=3.3
   - pyyaml=6

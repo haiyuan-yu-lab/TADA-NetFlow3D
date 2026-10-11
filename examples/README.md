@@ -1,5 +1,9 @@
 # Examples
 
+To reproduce the manuscript results, use the
+[manuscript workflow](../docs/reproducing_results.md). The examples below show
+how to run the individual methods.
+
 Run TADA for SSC/KOR/STAR and SPARK, or run NetFlow3D with a prepared real-data
 subset. All commands below run from the repository root and use
 [`config/example_config.yaml`](../config/example_config.yaml).

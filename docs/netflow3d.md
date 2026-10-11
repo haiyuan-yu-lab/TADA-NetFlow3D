@@ -4,11 +4,12 @@ NetFlow3D places TADA-derived heat on an optionally expression-filtered protein
 network, upweights selected disrupted interactions, performs network diffusion,
 selects a delta threshold using randomized backgrounds, and reports strongly
 connected hot subnetworks. Prepared gene scores from other sources can also be
-used.
+used. To reproduce the study modules, use the
+[manuscript workflow](reproducing_results.md).
 
 ## Running an analysis
 
-See [README: Run NetFlow3D](../README.md#3-run-netflow3d) for a complete command.
+See [Run NetFlow3D](custom_data.md#3-run-netflow3d) for a complete command.
 The bash entry point runs in your active environment:
 
 ```bash
@@ -17,6 +18,7 @@ bash workflows/run_netflow3d.sh --help
 
 Supply a prepared `Gene`/`Score` table with `--gene-score`, a protein network
 with `--binary-interactome`, and a UniProt mapping with `--id-mapping`.
+The network and mapping default to the complete files in `resources/netflow3d/`.
 Use `--job-name` to name the run and `--output-dir` to choose its output parent
 directory. Input paths are relative to your working directory or absolute.
 See [input formats](input_formats.md) for the table columns.

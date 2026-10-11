@@ -6,193 +6,85 @@ gene scores, a protein interaction network, and optional disrupted edges.
 Manuscript figures, enrichment analyses, and experimental validation are outside
 this repository's scope.
 
-## Workflow
+## Reproduce the manuscript results
 
-```text
-coding and/or noncoding counts
-                    |
-                    v
-                  TADA
-                    |
-             gene BF and FDR
-                    |
-                    v
-        TADA-to-NetFlow3D conversion
-                    |
-                    v
-                NetFlow3D
-                    |
-          subnetworks + graph states
-```
-
-## Setup
+### 1. Set up the environment
 
 ```bash
 conda env create -f environment.yml
 conda activate tada-netflow3d
 ```
 
-Python utilities can also be installed with `python -m pip install -e .`.
-TADA requires R with GenomicRanges, stringr, and dplyr.
-
-## Quick start
-
 Run the following commands from the repository root.
 
-### 1. Run TADA
+### 2. Run the workflow
 
-Choose either Option A or Option B to run the SPARK example with the same
-inputs and analysis settings.
-
-#### Option A: Explicit arguments
+Input and output paths are provided in
+[config/manuscript_config.yaml](config/manuscript_config.yaml).
 
 ```bash
-mkdir -p results/examples/tada/SPARK
-
-Rscript src/tada/run_tada.R \
-  --coding-file examples/input/tada/SPARK/coding_counts.tsv \
-  --noncoding-file examples/input/tada/SPARK/noncoding_counts.tsv \
-  --info-file examples/input/tada/shared/gene_information.tsv \
-  --prior-file examples/input/tada/shared/priors.tsv \
-  --sample-file examples/input/tada/SPARK/sample_sizes.tsv \
-  --dn-coding \
-  --in-coding \
-  --dn-noncoding \
-  --in-noncoding \
-  --mut-col mut.em \
-  --output-file results/examples/tada/SPARK/tada_results.tsv
+bash workflows/reproduce_manuscript.sh config/manuscript_config.yaml
 ```
 
-| Input argument | Contents |
+This command runs the study's gene association and network analyses and saves
+the gene results and protein interaction modules under `results/manuscript/`.
+
+### 3. Inspect the results
+
+| Output under `results/manuscript/` | Contents |
 |---|---|
-| `--coding-file` | Gene-level coding variant counts and mutation rates |
-| `--noncoding-file` | Noncoding variant counts and mutation rates |
-| `--info-file` | Gene information, including LOEUF weights |
-| `--prior-file` | Model priors |
-| `--sample-file` | Sample sizes for each evidence category |
+| `tada_results.tsv` | Gene association results |
+| `netflow3d_gene_scores.tsv` | Integrated scores used by NetFlow3D |
+| `reported_modules.tsv` | The 13 reported modules, with protein and gene identifiers |
+| `netflow3d/manuscript/` | All subnetworks, network states and background results |
 
-The four analysis switches enable de novo (`dn`) and inherited (`in`) coding
-and noncoding evidence. All evidence categories are disabled by default.
-`--mut-col mut.em` selects the noncoding mutation-rate column. For coding-only
-or noncoding-only analysis, supply the corresponding input and enable only
-its switches; keep the information, prior, and sample-size tables.
+The workflow uses prepared coding Bayes factors and runs network background
+trials, which can take several hours. See the [reproduction guide](docs/reproducing_results.md)
+for staged runs, saved intermediate results and runtime information.
 
-Results are written to the file specified by `--output-file`. See the
-[TADA guide](docs/tada.md) for individual category switches and other options.
-
-#### Option B: YAML configuration
-
-Read the input paths and analysis options from the bundled
-[configuration](config/example_config.yaml):
+To reproduce Table 8 alone, using only bundled inputs:
 
 ```bash
-bash workflows/run_tada.sh config/example_config.yaml --cohort SPARK
+bash workflows/reproduce_manuscript.sh config/manuscript_config.yaml --stage tada
 ```
 
-Edit a copy of the configuration to use your own input paths and settings.
-See the [TADA guide](docs/tada.md#yaml-configuration) for running both cohorts
-and for configuration rules.
+## Examples and custom analyses
 
-### 2. Prepare gene scores
-
-The NetFlow3D example uses the prepared real-data subset in
-`examples/input/netflow3d/gene_scores.tsv`; no conversion is needed to run it.
-For your own TADA results, the optional converter writes a `Gene`/`Score` table:
-
-```bash
-python scripts/tada_to_netflow3d.py \
-  --tada-results results/examples/tada/SPARK/tada_results.tsv \
-  --output results/examples/netflow/input/netflow3d_gene_scores.tsv
-```
-
-The converter defaults to `Score = max(0, ln(BF))`, using the total TADA Bayes
-factor. You can also supply your own prepared `Gene`/`Score` table.
-
-### 3. Run NetFlow3D
-
-Run the bundled real-data subset with explicit input paths. Disrupted
-interactions and an expressed-gene list are optional for your own analyses.
-
-```bash
-bash workflows/run_netflow3d.sh \
-  --job-name example \
-  --gene-score examples/input/netflow3d/gene_scores.tsv \
-  --binary-interactome examples/input/netflow3d/interactome.tsv \
-  --id-mapping examples/input/netflow3d/id_mapping.tsv \
-  --disrupted-interaction examples/input/netflow3d/disrupted_interactions.tsv \
-  --expressed-genes examples/input/netflow3d/expressed_genes.txt \
-  --output-dir results/examples/netflow/output
-```
-
-The command uses the default analysis settings, including 1,000 background
-trials. You can run the same example from the shared configuration instead:
-
-```bash
-bash workflows/run_netflow3d.sh config/example_config.yaml
-```
-
-Use `bash workflows/run_examples.sh` to run both TADA cohorts and the prepared
-NetFlow3D subset. The examples use their own bundled inputs; the NetFlow3D
-subset does not consume the TADA example outputs. Optional settings are listed
-in the [parameter reference](docs/parameters.md#netflow3d-parameters).
-
-Results are written to `results/examples/netflow/output/example/`. Repeating
-the same job name and output directory replaces that job's generated files; a different job name
-keeps the runs separate. See the [NetFlow3D guide](docs/netflow3d.md) for the
-method.
-
-## Example data
-
-Example TADA inputs are provided for SSC/KOR/STAR and SPARK. They include coding
-and noncoding variant counts, gene information, priors, and sample sizes. Each
-run produces a gene-level results table containing Bayes factors, FDR, and
-p-values. A NetFlow3D subset contains 95 proteins and 112 interactions, with
-prepared gene scores and supporting tables. See
-[examples/README.md](examples/README.md) for the bundled files and
-expected outputs, and [input formats](docs/input_formats.md) for preparing your
-own data.
-
-For full analyses, prepare external network and ID mapping files as described
-in [reference data](docs/reference_data.md). The example configuration uses the
-bundled small subset.
-
-## Layout and documentation
-
-- `src/`: scientific TADA and NetFlow3D implementations.
-- `workflows/`: overall example, TADA, and NetFlow3D bash entry points.
-- `config/`: shared example YAML.
-- `scripts/`: YAML launcher, optional table-header checks, and BF conversion.
-- `examples/`: prepared TADA inputs, a real NetFlow3D subset, and expected results.
-- `resources/`: reference-data manifest and documentation.
+For a smaller network example and the individual TADA and NetFlow3D commands,
+see [examples](examples/README.md) and [analyses with your own data](docs/custom_data.md).
+These examples introduce the interfaces; the manuscript workflow above uses
+the complete study inputs.
 
 [TADA](docs/tada.md) · [NetFlow3D](docs/netflow3d.md) ·
 [Input formats](docs/input_formats.md) · [Output formats](docs/output_formats.md) ·
-[Parameters](docs/parameters.md) · [Reference data](docs/reference_data.md) ·
-[Troubleshooting](docs/troubleshooting.md) · [Developer guide](docs/developer_guide.md)
+[Parameters](docs/parameters.md) · [Reference data](docs/reference_data.md)
 
-## Reproducibility and testing
+## Repository layout
+
+- `reproduction/`: study inputs and reference results for the manuscript workflow.
+- `src/`: TADA, NetFlow3D and manuscript evidence-integration code.
+- `workflows/`: bash entry points for reproduction and individual methods.
+- `config/`: manuscript and example configurations.
+- `examples/`: individual-method inputs and expected results.
+- `scripts/`: configuration launchers and table utilities.
+- `resources/`: complete HINT HQ interactome, UniProt mapping and their documentation.
+
+## Development
 
 ```bash
 bash tests/run_checks.sh
 ```
 
-The checks cover basic code and input-header validation. They do not execute
-TADA or NetFlow3D analyses.
+These checks cover code syntax, repository references and input headers. They
+run converter checks but do not execute the full scientific workflow.
+See the [developer guide](docs/developer_guide.md).
 
-## Data policy
+## Data, citation and support
 
-The bundled TADA examples contain real aggregate count tables. No
-individual-level participant data are included. Users are responsible for
-confirming that their own data may be processed and shared under the relevant
-consent and governance requirements.
-
-## Citation and license
+Bundled study tables contain aggregate counts, prepared inputs and results;
+no participant identifiers are included. The complete HINT HQ interactome and
+UniProt mapping are provided under `resources/netflow3d/`.
 
 See `CITATION.cff` and `LICENSE.md`. Publication metadata and the software license
-remain subject to finalization.
-
-## Support
-
-Please use the GitHub issue tracker for reproducible bug reports. Include the
-command, software versions, input column names, and complete error message; do
-not attach controlled participant data.
+remain subject to finalization. For bug reports, use the GitHub issue tracker
+and include the command and error message.

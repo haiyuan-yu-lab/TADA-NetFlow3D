@@ -1,0 +1,39 @@
+# Reproduce Supplementary Tables 8 and 10.
+# Paths are relative to the repository root, or may be absolute.
+output-dir: results/manuscript
+expected-output-dir: reproduction/expected_output
+
+inputs:
+  info-file: examples/input/tada/shared/gene_information.tsv
+  prior-file: examples/input/tada/shared/priors.tsv
+  fu-coding-file: reproduction/input/tada/fu_coding_bayes_factors.tsv
+  netflow-coding-bf-file: reproduction/input/netflow3d/coding_bayes_factors.tsv
+  cohorts:
+    SSC_KOR_STAR:
+      sample-file: examples/input/tada/SSC_KOR_STAR/sample_sizes.tsv
+      noncoding-files:
+        exc: reproduction/input/tada/SSC_KOR_STAR/Deconv_Excitatory_Neurons.tsv
+        mic: reproduction/input/tada/SSC_KOR_STAR/Deconv_Microglia.tsv
+        ast: reproduction/input/tada/SSC_KOR_STAR/Deconv_Astrocytes.tsv
+        cortex: reproduction/input/tada/SSC_KOR_STAR/Cerebral_Cortex.tsv
+        other_cortex: reproduction/input/tada/SSC_KOR_STAR/Other_Cerebral_Cortex.tsv
+        combined: examples/input/tada/SSC_KOR_STAR/noncoding_counts.tsv
+    SPARK:
+      sample-file: examples/input/tada/SPARK/sample_sizes.tsv
+      noncoding-files:
+        exc: reproduction/input/tada/SPARK/Deconv_Excitatory_Neurons.tsv
+        mic: reproduction/input/tada/SPARK/Deconv_Microglia.tsv
+        ast: reproduction/input/tada/SPARK/Deconv_Astrocytes.tsv
+        cortex: reproduction/input/tada/SPARK/Cerebral_Cortex.tsv
+        other_cortex: reproduction/input/tada/SPARK/Other_Cerebral_Cortex.tsv
+        combined: examples/input/tada/SPARK/noncoding_counts.tsv
+
+netflow3d:
+  job-name: manuscript
+  # Complete reference files bundled with the repository.
+  binary-interactome: resources/netflow3d/HomoSapiens_binary_HINThq.txt
+  id-mapping: resources/netflow3d/HUMAN_9606_idmapping.dat.gz
+  expressed-genes: reproduction/input/netflow3d/expressed_genes.txt
+  disrupted-interaction: reproduction/input/netflow3d/disrupted_interactions.tsv
+  # Leave null to recalculate background trials.
+  background-delta-file: null

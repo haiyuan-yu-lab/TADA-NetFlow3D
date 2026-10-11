@@ -1,9 +1,10 @@
-# Reference resources
+# Network reference files
 
-Production NetFlow3D runs require a binary protein interactome and a UniProt ID
-mapping table. Full reference datasets are not committed here; obtain them
-separately and record their versions and sources in [`manifest.tsv`](manifest.tsv).
-See the [reference-data guide](../docs/reference_data.md).
+`netflow3d/` contains the two complete reference files used by the manuscript
+workflow:
 
-The bundled examples contain TADA input tables and a small NetFlow3D subset.
-They can be run without downloading full reference datasets.
+- `HomoSapiens_binary_HINThq.txt`: HINT HQ binary protein interactions.
+- `HUMAN_9606_idmapping.dat.gz`: human UniProt identifier mappings.
+
+Their paths are set in [the manuscript configuration](../config/manuscript_config.yaml).
+See [reference data](../docs/reference_data.md) for formats and custom inputs.

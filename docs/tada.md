@@ -4,11 +4,12 @@ TADA can combine de novo and inherited coding evidence for PTV, MisB, and MisA
 classes. It can also include de novo and inherited regulatory-element evidence
 and allocate that evidence to target genes using inverse LOEUF weighting.
 Inputs are prepared count tables, mutation rates, gene information, priors,
-and sample sizes.
+and sample sizes. To reproduce the study results, use the
+[manuscript workflow](reproducing_results.md).
 
 ## Direct R invocation
 
-See [README: Option A](../README.md#option-a-explicit-arguments) for the complete
+See [explicit arguments](custom_data.md#option-a-explicit-arguments) for the complete
 SPARK command with explicit input paths and analysis options.
 
 See [input formats](input_formats.md) for the contents of each input table.

@@ -26,8 +26,9 @@ argument. Gene metadata and statistical parameters come from the input tables.
 
 Long options use hyphens. Required arguments are job name, gene scores, and the
 output parent directory. Input paths are relative to the caller's working
-directory or absolute. Supply the network and ID mapping paths explicitly,
-as shown in the README. Optional analysis settings can be omitted to use the
+directory or absolute. Network and ID mapping defaults use the complete files
+under `resources/netflow3d/`; supply other paths to use your own references.
+Optional analysis settings can be omitted to use the
 defaults; `--help` displays the runner's default seed.
 
 | Option | Meaning / default |
@@ -35,8 +36,8 @@ defaults; `--help` displays the runner's default seed.
 | `-j`, `--job-name` | Required single directory name; also prefixes the subnetwork file |
 | `-g`, `--gene-score` | Required `Gene`/`Score` TSV |
 | `-o`, `--output-dir` | Required parent directory; results go under `<output-dir>/<job-name>/` |
-| `-b`, `--binary-interactome` | Path to your headerless PPI table |
-| `-p`, `--id-mapping` | Path to your UniProt mapping table |
+| `-b`, `--binary-interactome` | Headerless PPI table; bundled HINT HQ network by default |
+| `-p`, `--id-mapping` | UniProt mapping table; bundled complete mapping by default |
 | `-i`, `--disrupted-interaction` | Optional `P1`/`P2` TSV; omitted by default |
 | `-X`, `--expressed-genes` | Optional expressed-gene list; omitted by default |
 | `-r`, `--restart-prob` | Restart probability; `0.5` |

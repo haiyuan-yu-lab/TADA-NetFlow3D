@@ -9,7 +9,7 @@ of text fields. Numeric calculations and row order follow the TADA runner.
 
 ## TADA-to-NetFlow3D conversion
 
-The converter writes `Gene` and `Score`. By default `Score = ln(bf)`.
+The converter writes `Gene` and `Score`. By default `Score = max(0, ln(bf))`.
 
 ## NetFlow3D
 
