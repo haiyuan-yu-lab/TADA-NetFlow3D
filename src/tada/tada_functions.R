@@ -1,5 +1,7 @@
-library(stringr)
-library(dplyr)
+suppressPackageStartupMessages({
+    library(stringr)
+    library(dplyr)
+});
 
 get_next_arg <- function(flag, args) {
   flag_index <- match(flag, args)
@@ -161,18 +163,17 @@ BF_DN <- function(count_case, count_con, n_case, n_con, mut, gamma.dn, beta.dn){
   }else{
     BF_con <- rep(1, length(mut))
   }
-  # BF_con[BF_con<1] <- 1
+#   BF_con[BF_con<1] <- 1
   
   ### BF evidence calculation for probands
   BF_case <- exp(sapply(1:length(mut), function(i) log.bayes.factor.dn(x.dn=count_case[i], n.dn=n_case, mu=mut[i], beta.dn=beta.dn, gamma.dn=gamma.dn[i])))
-  # BF_case[BF_case<1] <- 1
+#   BF_case[BF_case<1] <- 1
   
   ### Combine proband and sibling BF evidence
-  ### Enforce BF back to 1 if no observations in probands and siblings
+  ### Enforce BF back to 1 if no observations in probands or siblings
   BF <- pmax(BF_case/BF_con, 1)
+  BF[which(count_case==0 & count_con==0)] <- 1
   BF[is.na(BF)] <- 1
-  BF[which((count_case+count_con)==0)] <- 1
-
   return(BF)
 }
 

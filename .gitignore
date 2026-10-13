@@ -12,3 +12,4 @@ logs/
 resources/downloads/
 *.graphml.gz
 source_material/
+.pycache/

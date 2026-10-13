@@ -1,23 +1,32 @@
-project_name: example
-results_dir: results/example
+# Paths are relative to the repository root; absolute paths are also supported.
+# Each cohort is fitted separately. These runs do not combine cohort BFs.
 tada:
-  coding_file: examples/input/coding_counts.tsv
-  noncoding_file: examples/input/noncoding_counts.tsv
-  info_file: examples/input/gene_information.tsv
-  prior_file: examples/input/priors.tsv
-  sample_file: examples/input/sample_sizes.tsv
-  include_de_novo_noncoding: true
-  include_inherited_noncoding: true
-  floor_inherited_bf: false
+  info-file: examples/input/tada/shared/gene_information.tsv
+  prior-file: examples/input/tada/shared/priors.tsv
+  mut-col: mut.em
+  dn-coding: true
+  in-coding: true
+  dn-noncoding: true
+  in-noncoding: true
+  in-floor: false
+  cohorts:
+    SSC_KOR_STAR:
+      coding-file: examples/input/tada/SSC_KOR_STAR/coding_counts.tsv
+      noncoding-file: examples/input/tada/SSC_KOR_STAR/noncoding_counts.tsv
+      sample-file: examples/input/tada/SSC_KOR_STAR/sample_sizes.tsv
+      output-file: results/examples/tada/SSC_KOR_STAR/tada_results.tsv
+    SPARK:
+      coding-file: examples/input/tada/SPARK/coding_counts.tsv
+      noncoding-file: examples/input/tada/SPARK/noncoding_counts.tsv
+      sample-file: examples/input/tada/SPARK/sample_sizes.tsv
+      output-file: results/examples/tada/SPARK/tada_results.tsv
+# Run the prepared network subset using the default analysis settings.
 netflow3d:
-  interactome: examples/input/interactome.tsv
-  id_mapping: examples/input/id_mapping.tsv
-  disrupted_interactions: examples/input/disrupted_interactions.tsv
-  expressed_genes: null
-  restart_probability: 0.2
-  disrupted_edge_weight: 5.0
-  resolution: low
-  max_subnetwork_size: 10
-  delta_trials: 2
-  random_seed: 2062
-  threads: 1
+  job-name: example
+  gene-score: examples/input/netflow3d/gene_scores.tsv
+  binary-interactome: examples/input/netflow3d/interactome.tsv
+  id-mapping: examples/input/netflow3d/id_mapping.tsv
+  disrupted-interaction: examples/input/netflow3d/disrupted_interactions.tsv
+  expressed-genes: examples/input/netflow3d/expressed_genes.txt
+  output-dir: results/examples/netflow/output
+  delta-trial: 1000

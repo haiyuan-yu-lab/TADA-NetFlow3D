@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from pathlib import Path
 import re
+import subprocess
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -9,7 +10,12 @@ FORBIDDEN = re.compile(r"/(Genomics|fs|local|home)/")
 
 def main() -> None:
     errors = []
-    for path in ROOT.rglob("*"):
+    # Check public repository files, including new files, while honoring Git ignores.
+    names = subprocess.check_output(
+        ["git", "ls-files", "--cached", "--others", "--exclude-standard", "-z"], cwd=ROOT,
+    ).decode().split("\0")
+    for name in filter(None, names):
+        path = ROOT / name
         if not path.is_file() or ".git" in path.parts or "source_material" in path.parts:
             continue
         if path.suffix.lower() not in {".py", ".r", ".sh", ".md", ".yaml", ".yml"}:

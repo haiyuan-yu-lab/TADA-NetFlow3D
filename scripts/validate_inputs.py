@@ -10,7 +10,7 @@ import pandas as pd
 
 
 SCHEMAS = {
-    "info": {"gene_id", "gene", "LOEUF", "pLI"},
+    "info": {"gene_id", "LOEUF", "pLI"},
     "coding": {
         "gene_id", "mut.ptv", "mut.misb", "mut.misa",
         "prior.dn.ptv", "prior.dn.misb", "prior.dn.misa",
@@ -26,9 +26,14 @@ SCHEMAS = {
 }
 
 
-def validate(path: Path, schema: str, header: bool = True) -> None:
+def validate(path: Path, schema: str, header: bool = True, mut_col: str = "mut.em") -> None:
     table = pd.read_csv(path, sep="\t", nrows=10, header=0 if header else None)
-    missing = SCHEMAS[schema].difference(table.columns)
+    required = SCHEMAS[schema]
+    if schema == "noncoding":
+        required = (required - {"mut.em"}) | {mut_col}
+    missing = required.difference(table.columns)
+    if schema in {"info", "coding"} and not {"Hugo_Symbol", "gene", "gene_gencodeV33"}.intersection(table.columns):
+        missing.add("gene symbol (Hugo_Symbol, gene, or gene_gencodeV33)")
     if missing:
         raise ValueError(f"{path}: missing {', '.join(sorted(missing))}")
 
@@ -38,6 +43,7 @@ def main() -> None:
     parser.add_argument("--info", type=Path)
     parser.add_argument("--coding", type=Path)
     parser.add_argument("--noncoding", type=Path)
+    parser.add_argument("--mut-col", default="mut.em", help="Noncoding mutation-rate column")
     parser.add_argument("--priors", type=Path)
     parser.add_argument("--sample-sizes", type=Path)
     parser.add_argument("--gene-score", type=Path)
@@ -52,7 +58,7 @@ def main() -> None:
     for argument, schema in mapping.items():
         path = getattr(args, argument)
         if path:
-            validate(path, schema)
+            validate(path, schema, mut_col=args.mut_col)
             print(f"OK: {path}")
             selected += 1
     if not selected:

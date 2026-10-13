@@ -1,10 +1,10 @@
-# Reference resources
+# Network reference files
 
-Production NetFlow3D runs require a binary protein interactome and a UniProt ID
-mapping table. These resources are not committed here because they are large and
-have independent versioning and licensing requirements.
+`netflow3d/` contains the two complete reference files used by the manuscript
+workflow:
 
-The synthetic files in `examples/input/` are sufficient for testing. Before a
-public release, maintainers should add approved download URLs, release versions,
-checksums, citations, and licenses to `manifest.tsv` and implement those entries
-in `scripts/download_reference_data.py`.
+- `HomoSapiens_binary_HINThq.txt`: HINT HQ binary protein interactions.
+- `HUMAN_9606_idmapping.dat.gz`: human UniProt identifier mappings.
+
+Their paths are set in [the manuscript configuration](../config/manuscript_config.yaml).
+See [reference data](../docs/reference_data.md) for formats and custom inputs.
