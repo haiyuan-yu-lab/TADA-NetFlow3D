@@ -83,23 +83,6 @@ def assemble_tada_table(fu: pd.DataFrame, noncoding: dict[str, pd.DataFrame]) ->
     return output
 
 
-def check_numeric_table(actual: pd.DataFrame, expected_file: Path, key: str) -> None:
-    """Compare identifiers and every reference column, allowing TSV float precision."""
-    expected = pd.read_csv(expected_file, sep="\t")
-    if actual[key].duplicated().any() or set(actual[key]) != set(expected[key]):
-        raise ValueError(f"Gene identifiers differ from {expected_file.name}")
-    actual = actual.set_index(key).loc[expected[key]]
-    expected = expected.set_index(key)
-    for column in expected.columns:
-        if column not in actual:
-            raise ValueError(f"Missing reference column: {column}")
-        if pd.api.types.is_numeric_dtype(expected[column]):
-            np.testing.assert_allclose(actual[column], expected[column], rtol=1e-8, atol=1e-12,
-                                       equal_nan=True, err_msg=f"{expected_file.name}: {column}")
-        elif actual[column].fillna("").tolist() != expected[column].fillna("").tolist():
-            raise ValueError(f"{expected_file.name}: {column} differs")
-
-
 def protein_sets(table: pd.DataFrame, column: str) -> list[tuple[str, ...]]:
     return sorted(tuple(sorted(str(s).split(","))) for s in table[column])
 

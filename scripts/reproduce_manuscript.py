@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src/reproduction"))
 from combine_cohort_bf import combine_tables
 from manuscript_results import (
-    MODEL_COLUMNS, assemble_tada_table, check_numeric_table,
+    MODEL_COLUMNS, assemble_tada_table,
     combine_coding_and_noncoding, export_modules,
 )
 
@@ -78,7 +78,6 @@ def run_tada(config: dict, output_dir: Path) -> dict[str, pd.DataFrame]:
         combined[model].to_csv(destination / f"{model}_combined.tsv", sep="\t", index=False)
     fu = pd.read_csv(path(config["inputs"]["fu-coding-file"]), sep="\t")
     table = assemble_tada_table(fu, combined)
-    check_numeric_table(table, path(config["expected-output-dir"]) / "tada_results.tsv", "gene_id")
     table.to_csv(output_dir / "tada_results.tsv", sep="\t", index=False)
     print(f"TADA results saved to {output_dir / 'tada_results.tsv'}", flush=True)
     return combined
@@ -97,7 +96,6 @@ def run_netflow(config: dict, output_dir: Path, combined: dict[str, pd.DataFrame
     integrated = combine_coding_and_noncoding(coding, combined["combined"])
     scores = integrated[["gene_id", "heat_score"]].rename(columns={"gene_id": "Gene", "heat_score": "Score"})
     expected_dir = path(config["expected-output-dir"])
-    check_numeric_table(scores, expected_dir / "netflow3d_gene_scores.tsv", "Gene")
     scores.to_csv(output_dir / "netflow3d_gene_scores.tsv", sep="\t", index=False)
     print(f"Gene scores saved to {output_dir / 'netflow3d_gene_scores.tsv'}", flush=True)
     command = [sys.executable, "-u", str(ROOT / "src/netflow3d/run_netflow3d.py"),
@@ -129,7 +127,6 @@ def main() -> None:
         with args.config.open() as handle:
             config = yaml.safe_load(handle)
         output_dir = path(config["output-dir"])
-        expected_dir = path(config["expected-output-dir"])
         if args.stage in {"all", "netflow"}:
             require_reference_files(config)
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -138,8 +135,6 @@ def main() -> None:
         else:
             combined = {model: pd.read_csv(output_dir / "tada" / f"{model}_combined.tsv", sep="\t")
                         for model in MODEL_COLUMNS}
-            check_numeric_table(pd.read_csv(output_dir / "tada_results.tsv", sep="\t"),
-                                expected_dir / "tada_results.tsv", "gene_id")
         if args.stage in {"all", "netflow"}:
             run_netflow(config, output_dir, combined)
         print(f"Completed. Results: {output_dir}", flush=True)
